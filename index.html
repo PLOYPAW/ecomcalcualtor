@@ -3,117 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เครื่องมือคำนวณค่าธรรมเนียมการขาย - ploypaw</title>
+    <title>เครื่องมือคำนวณค่าธรรมเนียมการขาย - Mobile Friendly</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         body { 
             font-family: 'Kanit', sans-serif; 
-            background-color: #fdfdfd; /* Off-white for better contrast */
+            background-color: #f8fafc;
             min-height: 100vh;
             margin: 0;
-            display: flex;
-            flex-direction: column;
+            overflow-x: hidden; 
         }
 
-        /* Header Section: Curved and more spacious */
         header {
             background-color: #f96096;
-            background-image: radial-gradient(circle at 20% 30%, #fb89b2 0%, #f96096 100%);
+            background-image: linear-gradient(135deg, #fb89b2 0%, #f96096 100%);
             width: 100%;
-            padding: 5rem 1rem 8rem 1rem; /* Added more top and bottom padding */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            border-bottom-left-radius: 5rem;
-            border-bottom-right-radius: 5rem;
-            box-shadow: 0 15px 40px rgba(249, 96, 150, 0.15);
+            padding: 3rem 1.5rem 6rem 1.5rem;
+            text-align: center;
+            border-bottom-left-radius: 3rem;
+            border-bottom-right-radius: 3rem;
+            box-shadow: 0 10px 30px rgba(249, 96, 150, 0.15);
             position: relative;
-            z-index: 1;
         }
-        
-        /* Main Container: More gap from the pink header content */
+
+        .header-logo {
+            @apply h-24 md:h-40 w-auto mx-auto object-contain transition-transform duration-500 drop-shadow-xl;
+        }
+
         .main-container {
-            /* Changed -mt to be less aggressive, giving more "breathing room" from the logo */
-            @apply max-w-7xl mx-auto w-full px-6 -mt-10 pb-24;
+            @apply max-w-6xl mx-auto w-full px-4 sm:px-6 -mt-8 pb-20;
             position: relative;
-            z-index: 10;
+            z-index: 20;
         }
 
-        /* Grand Glass Container: Refined borders and shadows */
-        .main-glass-wrapper {
-            @apply bg-white/90 backdrop-blur-2xl rounded-[3.5rem] border border-gray-100 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.1)] overflow-hidden;
-            min-height: 60vh;
+        .main-card {
+            @apply bg-white rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl shadow-gray-200/50 overflow-hidden border border-gray-100;
         }
 
-        /* Inner Content Padding */
         .content-area {
-            @apply p-8 md:p-12 lg:p-16;
+            @apply p-6 md:p-10 lg:p-12;
         }
 
-        /* Inner Cards: Cleaner Look */
-        .glass-card-inner { 
-            @apply bg-white p-8 rounded-[2.5rem] border border-gray-50 shadow-sm transition-all duration-300;
-        }
-        
-        .glass-card-inner:hover {
-            @apply shadow-md border-pink-100;
-        }
-        
-        .input-group { @apply space-y-2; }
-        
         input[type="number"], select { 
-            @apply w-full p-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-[#f96096]/10 focus:border-[#f96096] outline-none transition-all bg-gray-50/50; 
+            @apply w-full p-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-[#f96096]/10 focus:border-[#f96096] outline-none transition-all bg-gray-50 text-base; 
         }
-        
-        .fee-item { @apply flex justify-between text-[12px] text-gray-500 border-b border-gray-50 pb-2 mb-2 last:border-0; }
-        
-        /* Custom Theme Elements */
-        .btn-main { @apply bg-[#f96096] text-white hover:bg-[#d84d7d] transition-all shadow-xl active:scale-95 font-bold; }
-        .text-pink-dark { @apply text-[#b33a65]; }
-        
-        /* Animations */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
+
+        .input-label {
+            @apply block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider ml-1;
+        }
+
+        .result-card {
+            @apply bg-[#1e293b] rounded-[2rem] p-6 md:p-8 text-white shadow-xl flex flex-col justify-center;
+        }
+
+        .btn-action {
+            @apply w-full flex items-center justify-center px-8 py-4 bg-[#f96096] text-white rounded-2xl hover:bg-[#d84d7d] transition-all font-bold shadow-lg active:scale-95;
+        }
+
+        .fee-row {
+            @apply flex justify-between text-sm text-gray-500 border-b border-gray-50 py-2 last:border-0;
+        }
+
+        /* Toggle Switch Styling */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #e2e8f0;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #f96096; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-up { animation: fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #fdfdfd; }
-        ::-webkit-scrollbar-thumb { background: #f96096; border-radius: 20px; border: 2px solid #fdfdfd; }
+        .animate-up { animation: slideUp 0.6s ease-out forwards; }
     </style>
 </head>
 <body>
-    <!-- Header with increased spacing -->
+
     <header>
-        <div class="flex flex-col items-center animate-fade-up" style="animation-delay: 0.1s;">
+        <div class="animate-up">
             <img src="https://cdn.shopify.com/s/files/1/0839/1278/6208/files/offi.png?v=1773728815" 
                  alt="ploypaw logo" 
-                 class="h-32 md:h-48 w-auto object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.25)] hover:scale-105 transition-transform duration-500">
-            <p class="text-white font-semibold text-[10px] md:text-xs mt-8 tracking-[0.5em] uppercase opacity-80">Fee Calculator Specialist</p>
-            <div class="w-16 h-1 bg-white/30 rounded-full mt-6"></div>
+                 class="header-logo">
+            <div class="mt-4 space-y-1">
+                <h1 class="text-white text-lg font-semibold tracking-wide">เครื่องมือคำนวณค่าธรรมเนียม</h1>
+                <p class="text-white/70 text-[10px] uppercase tracking-[0.3em]">Smart Seller Tools by Ploypaw</p>
+            </div>
         </div>
     </header>
 
-    <!-- Main Container with better layout and gaps -->
-    <main class="main-container animate-fade-up" style="animation-delay: 0.3s;">
-        <div class="main-glass-wrapper">
+    <main class="main-container animate-up" style="animation-delay: 0.2s;">
+        <div class="main-card">
             <div class="content-area">
-                <div class="grid grid-cols-1 lg:grid-cols-4 gap-12">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12">
                     
-                    <!-- Sidebar: Platform Settings -->
-                    <div class="lg:col-span-1 space-y-8">
-                        <div class="glass-card-inner">
-                            <h2 class="text-xl font-bold mb-6 flex items-center text-gray-800 border-b border-gray-50 pb-4">
-                                <svg class="w-6 h-6 mr-3 text-pink-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <div class="lg:col-span-4 space-y-6">
+                        <div class="bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
+                            <h2 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                                <span class="w-8 h-8 bg-pink-100 text-[#f96096] rounded-lg flex items-center justify-center mr-3">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+                                </span>
                                 ตั้งค่าแพลตฟอร์ม
                             </h2>
                             
-                            <div class="space-y-5">
+                            <div class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-semibold text-gray-600 mb-2 ml-1">เลือกแอปขายสินค้า</label>
+                                    <label class="input-label">แอพพลิเคชั่น</label>
                                     <select id="platformSelect" onchange="loadPlatformSettings()">
                                         <option value="Shopee">Shopee</option>
                                         <option value="TikTok Shop">TikTok Shop</option>
@@ -122,73 +139,69 @@
                                     </select>
                                 </div>
                                 
-                                <div id="feeSettings" class="space-y-4 pt-6 border-t border-gray-50">
-                                    <!-- Dynamic settings inserted here -->
+                                <div id="feeSettings" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 pt-4 border-t border-gray-100">
+                                    <!-- Dynamic Inputs -->
                                 </div>
 
-                                <button onclick="saveSettings()" class="w-full py-4 btn-main rounded-2xl mt-6">
-                                    บันทึกค่าเริ่มต้น
+                                <button onclick="saveSettings()" class="w-full py-4 text-[#f96096] bg-white border-2 border-[#f96096] rounded-2xl hover:bg-pink-50 transition-all font-bold mt-4">
+                                    บันทึกค่าพื้นฐาน
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Main Calculator Area -->
-                    <div class="lg:col-span-3 space-y-10">
+                    <div class="lg:col-span-8 space-y-8">
                         <div id="itemsContainer" class="space-y-8">
-                            <!-- Item cards inserted here -->
+                            <!-- Items will be injected here -->
                         </div>
 
-                        <div class="flex flex-col sm:flex-row justify-between items-center gap-6 py-8 border-t border-gray-50 mt-4">
-                            <button onclick="addItem()" id="addItemBtn" class="flex items-center px-12 py-5 bg-[#f96096] text-white rounded-[2rem] hover:bg-[#d84d7d] transition-all font-bold shadow-2xl hover:shadow-pink-200/50">
-                                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                เพิ่มรายการสินค้าใหม่
+                        <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                            <button onclick="addItem()" id="addItemBtn" class="btn-action flex-1">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                เพิ่มรายการสินค้า
                             </button>
-                            <div class="text-gray-400 font-bold bg-gray-50 px-8 py-3 rounded-full border border-gray-100" id="itemCounter">
+                            <div class="flex items-center justify-center bg-gray-100 px-6 py-4 rounded-2xl text-gray-500 font-bold text-sm" id="itemCounter">
                                 รายการ 1 / 5
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
     </main>
 
     <script>
-        // Data and Logic
         let platforms = {
             "Shopee": {
                 fees: [
-                    { key: 'payment', label: 'Payment Fee (%)', val: 3.21 },
-                    { key: 'sale', label: 'Sale Fee (%)', val: 10.7 },
-                    { key: 'service', label: 'PRIME Seller (%)', val: 8.56 },
-                    { key: 'fixed', label: 'Infrastructure (Fixed)', val: 1.07 }
+                    { key: 'payment', label: 'Payment Transaction Fee (%)', val: 3.21, type: 'percent' },
+                    { key: 'sale', label: 'Sale Transaction FeePlatform (%)', val: 10.7, type: 'percent' },
+                    { key: 'service', label: 'PRIME Seller fee (%)', val: 8.56, type: 'percent' },
+                    { key: 'infrastructure', label: 'Infrastructure Fee (Fixed)', val: 1.07, type: 'fixed' }
                 ]
             },
             "TikTok Shop": {
                 fees: [
-                    { key: 'payment', label: 'Payment Fee (%)', val: 3.21 },
-                    { key: 'sale', label: 'Sale Fee (%)', val: 7.49 },
-                    { key: 'promo', label: 'ส่งเสริมการขาย (%)', val: 6.96 },
-                    { key: 'fixed', label: 'Infrastructure (Fixed)', val: 1.07 },
-                    { key: 'live', label: 'Live Spacial (%)', val: 3.21 },
-                    { key: 'brand', label: 'Brand Crazy Deal (%)', val: 3.21 }
+                    { key: 'payment', label: 'Payment Transaction Fee (%)', val: 3.21, type: 'percent' },
+                    { key: 'sale', label: 'Sale Transaction FeePlatform (%)', val: 7.49, type: 'percent' },
+                    { key: 'promo', label: 'ส่งเสริมการขาย (%)', val: 6.96, type: 'percent' },
+                    { key: 'infrastructure', label: 'Infrastructure Fee (Fixed)', val: 1.07, type: 'fixed' },
+                    { key: 'live', label: 'ค่าธรรมเนียม Live Spacial (%)', val: 3.21, type: 'percent', toggle: true, enabled: false },
+                    { key: 'brand', label: 'ค่าธรรมเนียม Brand Crazy Deal (%)', val: 3.21, type: 'percent', toggle: true, enabled: false }
                 ]
             },
             "Lazada": {
                 fees: [
-                    { key: 'payment', label: 'Payment Fee (%)', val: 3.21 },
-                    { key: 'sale', label: 'Sale Fee (%)', val: 10.0 },
-                    { key: 'service', label: 'Premium Package (%)', val: 4.0 },
-                    { key: 'fixed', label: 'Fixed Fee (บาท)', val: 0 }
+                    { key: 'payment', label: 'Payment Transaction Fee (%)', val: 3.21, type: 'percent' },
+                    { key: 'sale', label: 'Sale Transaction FeePlatform (%)', val: 10.0, type: 'percent' },
+                    { key: 'service', label: 'Premium Package fee (%)', val: 4.0, type: 'percent' }
                 ]
             },
             "Custom": {
                 fees: [
-                    { key: 'payment', label: 'Fee 1 (%)', val: 0 },
-                    { key: 'sale', label: 'Fee 2 (%)', val: 0 },
-                    { key: 'service', label: 'Fee 3 (%)', val: 0 },
-                    { key: 'fixed', label: 'Fixed (บาท)', val: 0 }
+                    { key: 'f1', label: 'ค่าธรรมเนียม 1 (%)', val: 0, type: 'percent' },
+                    { key: 'f2', label: 'ค่าธรรมเนียม 2 (%)', val: 0, type: 'percent' }
                 ]
             }
         };
@@ -197,7 +210,7 @@
         const MAX_ITEMS = 5;
 
         function init() {
-            const saved = localStorage.getItem('fee_calc_v6');
+            const saved = localStorage.getItem('ploypaw_calc_v8');
             if (saved) platforms = JSON.parse(saved);
             loadPlatformSettings();
             renderItems();
@@ -207,28 +220,43 @@
             const p = document.getElementById('platformSelect').value;
             const config = platforms[p];
             let html = '';
-
             config.fees.forEach((f, idx) => {
-                html += `
-                    <div class="input-group">
-                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">${f.label}</label>
-                        <input type="number" step="0.01" value="${f.val}" oninput="updateFeeValue('${p}', ${idx}, this.value)">
-                    </div>
-                `;
+                if (f.toggle) {
+                    html += `
+                        <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <span class="text-[11px] font-bold text-gray-500 uppercase">${f.label}</span>
+                            <label class="switch">
+                                <input type="checkbox" ${f.enabled ? 'checked' : ''} onchange="updateToggleValue('${p}', ${idx}, this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div>
+                            <label class="input-label">${f.label}</label>
+                            <input type="number" step="0.01" value="${f.val}" oninput="updateFeeValue('${p}', ${idx}, this.value)">
+                        </div>
+                    `;
+                }
             });
-
             document.getElementById('feeSettings').innerHTML = html;
             calculateAll();
         }
 
-        function updateFeeValue(platform, index, value) {
-            platforms[platform].fees[index].val = parseFloat(value) || 0;
+        function updateFeeValue(p, idx, val) {
+            platforms[p].fees[idx].val = parseFloat(val) || 0;
+            calculateAll();
+        }
+
+        function updateToggleValue(p, idx, checked) {
+            platforms[p].fees[idx].enabled = checked;
             calculateAll();
         }
 
         function saveSettings() {
-            localStorage.setItem('fee_calc_v6', JSON.stringify(platforms));
-            showToast('บันทึกค่าเริ่มต้นเรียบร้อยแล้ว');
+            localStorage.setItem('ploypaw_calc_v8', JSON.stringify(platforms));
+            showToast('บันทึกค่าธรรมเนียมแล้ว ✨');
         }
 
         function renderItems() {
@@ -237,78 +265,108 @@
             
             items.forEach((item, index) => {
                 const card = document.createElement('div');
-                card.className = 'glass-card-inner animate-fade-up';
-                card.style.animationDelay = `${0.1 * index}s`;
+                card.className = 'border border-gray-100 rounded-[2rem] p-6 md:p-8 bg-white shadow-sm';
                 card.innerHTML = `
-                    <div class="flex justify-between items-center mb-8">
-                        <div class="flex items-center">
-                             <span class="w-10 h-10 bg-[#f96096] text-white rounded-full flex items-center justify-center font-bold shadow-lg shadow-pink-100 mr-4 text-sm">${index + 1}</span>
-                             <h3 class="font-bold text-gray-700">สินค้าชิ้นที่ ${index + 1}</h3>
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center space-x-3">
+                            <span class="bg-[#f96096] text-white w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold">${index + 1}</span>
+                            <h3 class="font-bold text-gray-800">สินค้าชิ้นที่ ${index + 1}</h3>
                         </div>
                         ${items.length > 1 ? `
-                            <button onclick="removeItem(${index})" class="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
+                            <button onclick="removeItem(${index})" class="text-gray-300 hover:text-red-500 p-2">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                         ` : ''}
                     </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <div class="space-y-6">
-                            <div class="grid grid-cols-2 gap-6">
-                                <div class="input-group">
-                                    <label class="block text-xs font-bold text-gray-400 mb-1 ml-1 uppercase">ต้นทุน (Cost)</label>
-                                    <input type="number" value="${item.cost || ''}" oninput="updateItemData(${index}, 'cost', this.value)" placeholder="0.00" class="text-xl font-medium">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="input-label">ต้นทุนสินค้า</label>
+                                    <input type="number" value="${item.cost || ''}" oninput="updateItemData(${index}, 'cost', this.value)" placeholder="0.00">
                                 </div>
-                                <div class="input-group">
-                                    <label class="block text-xs font-bold text-gray-400 mb-1 ml-1 uppercase">ราคาขาย (Price)</label>
-                                    <input type="number" value="${item.price || ''}" oninput="updateItemData(${index}, 'price', this.value)" placeholder="0.00" class="text-xl font-bold border-[#f96096]/20 bg-pink-50/20">
+                                <div>
+                                    <label class="input-label">ราคาที่ตั้งขาย</label>
+                                    <input type="number" value="${item.price || ''}" oninput="updateItemData(${index}, 'price', this.value)" placeholder="0.00" class="border-[#f96096]/30 bg-pink-50/20">
                                 </div>
                             </div>
-                            
-                            <div class="bg-gray-50/80 rounded-[2rem] p-6 border border-gray-100">
-                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 flex items-center">
-                                    <span class="w-2 h-2 bg-pink-400 rounded-full mr-3"></span> แจกแจงค่าธรรมเนียม
-                                </p>
-                                <div id="breakdown-${index}" class="space-y-2"></div>
+                            <div class="bg-gray-50 rounded-2xl p-4">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">รายการหัก</p>
+                                <div id="breakdown-${index}" class="space-y-1"></div>
                             </div>
                         </div>
 
-                        <div class="bg-[#2d3436] rounded-[2.5rem] p-8 flex flex-col justify-center relative overflow-hidden shadow-2xl">
-                             <!-- Visual Decor -->
-                             <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full"></div>
-                             
-                             <div class="relative z-10">
-                                <div class="flex flex-col items-center text-center mb-8">
-                                    <span class="text-gray-400 text-[10px] font-bold uppercase tracking-[0.3em] mb-2">กำไรสุทธิทั้งหมด</span>
-                                    <span id="itemProfit-${index}" class="font-bold text-5xl text-white drop-shadow-md tracking-tight">฿0.00</span>
+                        <div class="result-card">
+                            <div class="text-center mb-6">
+                                <p class="text-white/50 text-[10px] uppercase tracking-widest mb-1">กำไรหลังหักค่าธรรมเนียม</p>
+                                <div id="profit-${index}" class="text-4xl md:text-5xl font-bold tracking-tight">฿0.00</div>
+                            </div>
+                            <div class="space-y-3 pt-6 border-t border-white/10">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-white/60">ยอดรับสุทธิ:</span>
+                                    <span id="payout-${index}" class="font-bold">฿0.00</span>
                                 </div>
-                                
-                                <div class="space-y-4 pt-6 border-t border-white/10">
-                                    <div class="flex justify-between items-center text-sm">
-                                        <span class="text-gray-400 font-medium">รวมค่าธรรมเนียม:</span>
-                                        <span id="itemTotalFee-${index}" class="text-pink-400 font-bold">-฿0.00</span>
-                                    </div>
-                                    <div class="flex justify-between items-center text-sm">
-                                        <span class="text-gray-400 font-medium">ยอดโอนเข้าบัญชี:</span>
-                                        <span id="itemPayout-${index}" class="text-white font-bold text-lg">฿0.00</span>
-                                    </div>
-                                    <div class="flex justify-between items-center mt-6 pt-4 border-t border-white/5">
-                                        <span class="text-gray-500 text-[10px] font-bold uppercase">Profit Margin</span>
-                                        <span id="itemMargin-${index}" class="px-5 py-2 rounded-2xl text-xs font-black bg-white/10 text-white border border-white/10">0%</span>
-                                    </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-white/60 text-xs">Margin:</span>
+                                    <span id="margin-${index}" class="px-4 py-1.5 rounded-full text-xs font-black bg-white/10">0%</span>
                                 </div>
-                             </div>
+                            </div>
                         </div>
                     </div>
                 `;
                 container.appendChild(card);
             });
-
             document.getElementById('itemCounter').innerText = `รายการ ${items.length} / ${MAX_ITEMS}`;
-            const btn = document.getElementById('addItemBtn');
-            btn.disabled = items.length >= MAX_ITEMS;
-            btn.style.opacity = items.length >= MAX_ITEMS ? '0.3' : '1';
             calculateAll();
+        }
+
+        function updateItemData(idx, key, val) {
+            items[idx][key] = parseFloat(val) || 0;
+            calculateAll();
+        }
+
+        function calculateAll() {
+            const p = document.getElementById('platformSelect').value;
+            const config = platforms[p];
+
+            items.forEach((item, index) => {
+                let totalFee = 0;
+                let breakdownHtml = '';
+                if (item.price > 0) {
+                    config.fees.forEach(f => {
+                        // Skip if it's a toggle fee and it's not enabled
+                        if (f.toggle && !f.enabled) return;
+
+                        let amount = 0;
+                        if (f.type === 'percent') {
+                            amount = (item.price * f.val) / 100;
+                        } else {
+                            amount = f.val;
+                        }
+                        
+                        totalFee += amount;
+                        breakdownHtml += `<div class="fee-row"><span>${f.label}</span><span class="font-bold text-gray-700">฿${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>`;
+                    });
+                } else {
+                    breakdownHtml = '<div class="text-center text-gray-300 py-2 text-xs italic">รอระบุราคาขาย...</div>';
+                }
+
+                const payout = Math.max(0, item.price - totalFee);
+                const profit = payout - item.cost;
+                const margin = item.price > 0 ? (profit / item.price) * 100 : 0;
+
+                const profitEl = document.getElementById(`profit-${index}`);
+                if (profitEl) {
+                    profitEl.innerText = `฿${profit.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                    profitEl.style.color = profit >= 0 ? '#fff' : '#f87171';
+                    document.getElementById(`payout-${index}`).innerText = `฿${payout.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                    const mEl = document.getElementById(`margin-${index}`);
+                    mEl.innerText = `${margin.toFixed(2)}%`;
+                    mEl.style.color = margin >= 0 ? '#4ade80' : '#f87171';
+                    document.getElementById(`breakdown-${index}`).innerHTML = breakdownHtml;
+                }
+            });
         }
 
         function addItem() {
@@ -318,77 +376,21 @@
             }
         }
 
-        function removeItem(index) {
-            items.splice(index, 1);
+        function removeItem(idx) {
+            items.splice(idx, 1);
             renderItems();
         }
 
-        function updateItemData(index, field, val) {
-            items[index][field] = parseFloat(val) || 0;
-            calculateAll();
-        }
-
-        function calculateAll() {
-            const p = document.getElementById('platformSelect').value;
-            const config = platforms[p];
-
-            items.forEach((item, index) => {
-                const sell = item.price;
-                const cost = item.cost;
-                let totalFee = 0;
-                let breakdownHtml = '';
-                
-                if (sell > 0) {
-                    config.fees.forEach(f => {
-                        let amount = 0;
-                        if (f.key !== 'fixed') {
-                            amount = (sell * f.val) / 100;
-                            if (amount > 0) {
-                                breakdownHtml += `<div class="fee-item"><span>${f.label} (${f.val}%)</span><span class="font-bold text-gray-600">฿${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>`;
-                            }
-                        } else {
-                            amount = f.val;
-                            if (amount > 0) {
-                                breakdownHtml += `<div class="fee-item"><span>${f.label}</span><span class="font-bold text-gray-600">฿${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>`;
-                            }
-                        }
-                        totalFee += amount;
-                    });
-                } else {
-                    breakdownHtml = '<p class="text-gray-300 italic text-[11px] text-center py-4">รอใส่ราคาขายเพื่อเริ่มคำนวณ...</p>';
-                }
-
-                const payout = Math.max(0, sell - totalFee);
-                const profit = payout - cost;
-                const margin = sell > 0 ? (profit / sell) * 100 : 0;
-
-                const profitEl = document.getElementById(`itemProfit-${index}`);
-                if (profitEl) {
-                    profitEl.innerText = `฿${profit.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-                    profitEl.className = `font-bold text-5xl drop-shadow-md tracking-tight ${profit >= 0 ? 'text-white' : 'text-red-400'}`;
-                    document.getElementById(`itemTotalFee-${index}`).innerText = `-฿${totalFee.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-                    document.getElementById(`itemPayout-${index}`).innerText = `฿${payout.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-                    const marginEl = document.getElementById(`itemMargin-${index}`);
-                    marginEl.innerText = `${margin.toFixed(2)}%`;
-                    marginEl.className = `px-5 py-2 rounded-2xl text-xs font-black border ${margin >= 0 ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`;
-                    document.getElementById(`breakdown-${index}`).innerHTML = breakdownHtml;
-                }
-            });
-        }
-
         function showToast(msg) {
-            const toast = document.createElement('div');
-            toast.className = 'fixed bottom-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-12 py-5 rounded-[2rem] shadow-2xl z-50 font-bold transition-all duration-500 opacity-0 transform translate-y-4 flex items-center border border-white/10';
-            toast.innerHTML = `<span class="mr-3">✨</span> ${msg}`;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '1';
-                toast.style.transform = 'translate(-50%, 0)';
-            }, 50);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translate(-50%, 20px)';
-                setTimeout(() => toast.remove(), 500);
+            const t = document.createElement('div');
+            t.className = 'fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-4 rounded-full shadow-2xl z-50 font-medium text-sm transition-all duration-300 transform translate-y-2 opacity-0';
+            t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; }, 50);
+            setTimeout(() => { 
+                t.style.opacity = '0'; 
+                t.style.transform = 'translateX(-50%) translateY(10px)';
+                setTimeout(() => t.remove(), 300);
             }, 3000);
         }
 
