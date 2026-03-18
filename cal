@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เครื่องมือคำนวณค่าธรรมเนียมการขาย - ploypaw</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Kanit', sans-serif; 
+            background-color: #fdfdfd; /* Off-white for better contrast */
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Section: Curved and more spacious */
+        header {
+            background-color: #f96096;
+            background-image: radial-gradient(circle at 20% 30%, #fb89b2 0%, #f96096 100%);
+            width: 100%;
+            padding: 5rem 1rem 8rem 1rem; /* Added more top and bottom padding */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-bottom-left-radius: 5rem;
+            border-bottom-right-radius: 5rem;
+            box-shadow: 0 15px 40px rgba(249, 96, 150, 0.15);
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Main Container: More gap from the pink header content */
+        .main-container {
+            /* Changed -mt to be less aggressive, giving more "breathing room" from the logo */
+            @apply max-w-7xl mx-auto w-full px-6 -mt-10 pb-24;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Grand Glass Container: Refined borders and shadows */
+        .main-glass-wrapper {
+            @apply bg-white/90 backdrop-blur-2xl rounded-[3.5rem] border border-gray-100 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.1)] overflow-hidden;
+            min-height: 60vh;
+        }
+
+        /* Inner Content Padding */
+        .content-area {
+            @apply p-8 md:p-12 lg:p-16;
+        }
+
+        /* Inner Cards: Cleaner Look */
+        .glass-card-inner { 
+            @apply bg-white p-8 rounded-[2.5rem] border border-gray-50 shadow-sm transition-all duration-300;
+        }
+        
+        .glass-card-inner:hover {
+            @apply shadow-md border-pink-100;
+        }
+        
+        .input-group { @apply space-y-2; }
+        
+        input[type="number"], select { 
+            @apply w-full p-3.5 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-[#f96096]/10 focus:border-[#f96096] outline-none transition-all bg-gray-50/50; 
+        }
+        
+        .fee-item { @apply flex justify-between text-[12px] text-gray-500 border-b border-gray-50 pb-2 mb-2 last:border-0; }
+        
+        /* Custom Theme Elements */
+        .btn-main { @apply bg-[#f96096] text-white hover:bg-[#d84d7d] transition-all shadow-xl active:scale-95 font-bold; }
+        .text-pink-dark { @apply text-[#b33a65]; }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up { animation: fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #fdfdfd; }
+        ::-webkit-scrollbar-thumb { background: #f96096; border-radius: 20px; border: 2px solid #fdfdfd; }
+    </style>
+</head>
+<body>
+    <!-- Header with increased spacing -->
+    <header>
+        <div class="flex flex-col items-center animate-fade-up" style="animation-delay: 0.1s;">
+            <img src="https://cdn.shopify.com/s/files/1/0839/1278/6208/files/offi.png?v=1773728815" 
+                 alt="ploypaw logo" 
+                 class="h-32 md:h-48 w-auto object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.25)] hover:scale-105 transition-transform duration-500">
+            <p class="text-white font-semibold text-[10px] md:text-xs mt-8 tracking-[0.5em] uppercase opacity-80">Fee Calculator Specialist</p>
+            <div class="w-16 h-1 bg-white/30 rounded-full mt-6"></div>
+        </div>
+    </header>
+
+    <!-- Main Container with better layout and gaps -->
+    <main class="main-container animate-fade-up" style="animation-delay: 0.3s;">
+        <div class="main-glass-wrapper">
+            <div class="content-area">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-12">
+                    
+                    <!-- Sidebar: Platform Settings -->
+                    <div class="lg:col-span-1 space-y-8">
+                        <div class="glass-card-inner">
+                            <h2 class="text-xl font-bold mb-6 flex items-center text-gray-800 border-b border-gray-50 pb-4">
+                                <svg class="w-6 h-6 mr-3 text-pink-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                ตั้งค่าแพลตฟอร์ม
+                            </h2>
+                            
+                            <div class="space-y-5">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-600 mb-2 ml-1">เลือกแอปขายสินค้า</label>
+                                    <select id="platformSelect" onchange="loadPlatformSettings()">
+                                        <option value="Shopee">Shopee</option>
+                                        <option value="TikTok Shop">TikTok Shop</option>
+                                        <option value="Lazada">Lazada</option>
+                                        <option value="Custom">ปรับแต่งเอง</option>
+                                    </select>
+                                </div>
+                                
+                                <div id="feeSettings" class="space-y-4 pt-6 border-t border-gray-50">
+                                    <!-- Dynamic settings inserted here -->
+                                </div>
+
+                                <button onclick="saveSettings()" class="w-full py-4 btn-main rounded-2xl mt-6">
+                                    บันทึกค่าเริ่มต้น
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Calculator Area -->
+                    <div class="lg:col-span-3 space-y-10">
+                        <div id="itemsContainer" class="space-y-8">
+                            <!-- Item cards inserted here -->
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row justify-between items-center gap-6 py-8 border-t border-gray-50 mt-4">
+                            <button onclick="addItem()" id="addItemBtn" class="flex items-center px-12 py-5 bg-[#f96096] text-white rounded-[2rem] hover:bg-[#d84d7d] transition-all font-bold shadow-2xl hover:shadow-pink-200/50">
+                                <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                เพิ่มรายการสินค้าใหม่
+                            </button>
+                            <div class="text-gray-400 font-bold bg-gray-50 px-8 py-3 rounded-full border border-gray-100" id="itemCounter">
+                                รายการ 1 / 5
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Data and Logic
+        let platforms = {
+            "Shopee": {
+                fees: [
+                    { key: 'payment', label: 'Payment Fee (%)', val: 3.21 },
+                    { key: 'sale', label: 'Sale Fee (%)', val: 10.7 },
+                    { key: 'service', label: 'PRIME Seller (%)', val: 8.56 },
+                    { key: 'fixed', label: 'Infrastructure (Fixed)', val: 1.07 }
+                ]
+            },
+            "TikTok Shop": {
+                fees: [
+                    { key: 'payment', label: 'Payment Fee (%)', val: 3.21 },
+                    { key: 'sale', label: 'Sale Fee (%)', val: 7.49 },
+                    { key: 'promo', label: 'ส่งเสริมการขาย (%)', val: 6.96 },
+                    { key: 'fixed', label: 'Infrastructure (Fixed)', val: 1.07 },
+                    { key: 'live', label: 'Live Spacial (%)', val: 3.21 },
+                    { key: 'brand', label: 'Brand Crazy Deal (%)', val: 3.21 }
+                ]
+            },
+            "Lazada": {
+                fees: [
+                    { key: 'payment', label: 'Payment Fee (%)', val: 3.21 },
+                    { key: 'sale', label: 'Sale Fee (%)', val: 10.0 },
+                    { key: 'service', label: 'Premium Package (%)', val: 4.0 },
+                    { key: 'fixed', label: 'Fixed Fee (บาท)', val: 0 }
+                ]
+            },
+            "Custom": {
+                fees: [
+                    { key: 'payment', label: 'Fee 1 (%)', val: 0 },
+                    { key: 'sale', label: 'Fee 2 (%)', val: 0 },
+                    { key: 'service', label: 'Fee 3 (%)', val: 0 },
+                    { key: 'fixed', label: 'Fixed (บาท)', val: 0 }
+                ]
+            }
+        };
+
+        let items = [{ id: Date.now(), cost: 0, price: 0 }];
+        const MAX_ITEMS = 5;
+
+        function init() {
+            const saved = localStorage.getItem('fee_calc_v6');
+            if (saved) platforms = JSON.parse(saved);
+            loadPlatformSettings();
+            renderItems();
+        }
+
+        function loadPlatformSettings() {
+            const p = document.getElementById('platformSelect').value;
+            const config = platforms[p];
+            let html = '';
+
+            config.fees.forEach((f, idx) => {
+                html += `
+                    <div class="input-group">
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">${f.label}</label>
+                        <input type="number" step="0.01" value="${f.val}" oninput="updateFeeValue('${p}', ${idx}, this.value)">
+                    </div>
+                `;
+            });
+
+            document.getElementById('feeSettings').innerHTML = html;
+            calculateAll();
+        }
+
+        function updateFeeValue(platform, index, value) {
+            platforms[platform].fees[index].val = parseFloat(value) || 0;
+            calculateAll();
+        }
+
+        function saveSettings() {
+            localStorage.setItem('fee_calc_v6', JSON.stringify(platforms));
+            showToast('บันทึกค่าเริ่มต้นเรียบร้อยแล้ว');
+        }
+
+        function renderItems() {
+            const container = document.getElementById('itemsContainer');
+            container.innerHTML = '';
+            
+            items.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'glass-card-inner animate-fade-up';
+                card.style.animationDelay = `${0.1 * index}s`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-8">
+                        <div class="flex items-center">
+                             <span class="w-10 h-10 bg-[#f96096] text-white rounded-full flex items-center justify-center font-bold shadow-lg shadow-pink-100 mr-4 text-sm">${index + 1}</span>
+                             <h3 class="font-bold text-gray-700">สินค้าชิ้นที่ ${index + 1}</h3>
+                        </div>
+                        ${items.length > 1 ? `
+                            <button onclick="removeItem(${index})" class="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <div class="space-y-6">
+                            <div class="grid grid-cols-2 gap-6">
+                                <div class="input-group">
+                                    <label class="block text-xs font-bold text-gray-400 mb-1 ml-1 uppercase">ต้นทุน (Cost)</label>
+                                    <input type="number" value="${item.cost || ''}" oninput="updateItemData(${index}, 'cost', this.value)" placeholder="0.00" class="text-xl font-medium">
+                                </div>
+                                <div class="input-group">
+                                    <label class="block text-xs font-bold text-gray-400 mb-1 ml-1 uppercase">ราคาขาย (Price)</label>
+                                    <input type="number" value="${item.price || ''}" oninput="updateItemData(${index}, 'price', this.value)" placeholder="0.00" class="text-xl font-bold border-[#f96096]/20 bg-pink-50/20">
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50/80 rounded-[2rem] p-6 border border-gray-100">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 flex items-center">
+                                    <span class="w-2 h-2 bg-pink-400 rounded-full mr-3"></span> แจกแจงค่าธรรมเนียม
+                                </p>
+                                <div id="breakdown-${index}" class="space-y-2"></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#2d3436] rounded-[2.5rem] p-8 flex flex-col justify-center relative overflow-hidden shadow-2xl">
+                             <!-- Visual Decor -->
+                             <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full"></div>
+                             
+                             <div class="relative z-10">
+                                <div class="flex flex-col items-center text-center mb-8">
+                                    <span class="text-gray-400 text-[10px] font-bold uppercase tracking-[0.3em] mb-2">กำไรสุทธิทั้งหมด</span>
+                                    <span id="itemProfit-${index}" class="font-bold text-5xl text-white drop-shadow-md tracking-tight">฿0.00</span>
+                                </div>
+                                
+                                <div class="space-y-4 pt-6 border-t border-white/10">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-gray-400 font-medium">รวมค่าธรรมเนียม:</span>
+                                        <span id="itemTotalFee-${index}" class="text-pink-400 font-bold">-฿0.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-gray-400 font-medium">ยอดโอนเข้าบัญชี:</span>
+                                        <span id="itemPayout-${index}" class="text-white font-bold text-lg">฿0.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-6 pt-4 border-t border-white/5">
+                                        <span class="text-gray-500 text-[10px] font-bold uppercase">Profit Margin</span>
+                                        <span id="itemMargin-${index}" class="px-5 py-2 rounded-2xl text-xs font-black bg-white/10 text-white border border-white/10">0%</span>
+                                    </div>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('itemCounter').innerText = `รายการ ${items.length} / ${MAX_ITEMS}`;
+            const btn = document.getElementById('addItemBtn');
+            btn.disabled = items.length >= MAX_ITEMS;
+            btn.style.opacity = items.length >= MAX_ITEMS ? '0.3' : '1';
+            calculateAll();
+        }
+
+        function addItem() {
+            if (items.length < MAX_ITEMS) {
+                items.push({ id: Date.now(), cost: 0, price: 0 });
+                renderItems();
+            }
+        }
+
+        function removeItem(index) {
+            items.splice(index, 1);
+            renderItems();
+        }
+
+        function updateItemData(index, field, val) {
+            items[index][field] = parseFloat(val) || 0;
+            calculateAll();
+        }
+
+        function calculateAll() {
+            const p = document.getElementById('platformSelect').value;
+            const config = platforms[p];
+
+            items.forEach((item, index) => {
+                const sell = item.price;
+                const cost = item.cost;
+                let totalFee = 0;
+                let breakdownHtml = '';
+                
+                if (sell > 0) {
+                    config.fees.forEach(f => {
+                        let amount = 0;
+                        if (f.key !== 'fixed') {
+                            amount = (sell * f.val) / 100;
+                            if (amount > 0) {
+                                breakdownHtml += `<div class="fee-item"><span>${f.label} (${f.val}%)</span><span class="font-bold text-gray-600">฿${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>`;
+                            }
+                        } else {
+                            amount = f.val;
+                            if (amount > 0) {
+                                breakdownHtml += `<div class="fee-item"><span>${f.label}</span><span class="font-bold text-gray-600">฿${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>`;
+                            }
+                        }
+                        totalFee += amount;
+                    });
+                } else {
+                    breakdownHtml = '<p class="text-gray-300 italic text-[11px] text-center py-4">รอใส่ราคาขายเพื่อเริ่มคำนวณ...</p>';
+                }
+
+                const payout = Math.max(0, sell - totalFee);
+                const profit = payout - cost;
+                const margin = sell > 0 ? (profit / sell) * 100 : 0;
+
+                const profitEl = document.getElementById(`itemProfit-${index}`);
+                if (profitEl) {
+                    profitEl.innerText = `฿${profit.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                    profitEl.className = `font-bold text-5xl drop-shadow-md tracking-tight ${profit >= 0 ? 'text-white' : 'text-red-400'}`;
+                    document.getElementById(`itemTotalFee-${index}`).innerText = `-฿${totalFee.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                    document.getElementById(`itemPayout-${index}`).innerText = `฿${payout.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                    const marginEl = document.getElementById(`itemMargin-${index}`);
+                    marginEl.innerText = `${margin.toFixed(2)}%`;
+                    marginEl.className = `px-5 py-2 rounded-2xl text-xs font-black border ${margin >= 0 ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`;
+                    document.getElementById(`breakdown-${index}`).innerHTML = breakdownHtml;
+                }
+            });
+        }
+
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-12 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-12 py-5 rounded-[2rem] shadow-2xl z-50 font-bold transition-all duration-500 opacity-0 transform translate-y-4 flex items-center border border-white/10';
+            toast.innerHTML = `<span class="mr-3">✨</span> ${msg}`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translate(-50%, 0)';
+            }, 50);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 20px)';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
