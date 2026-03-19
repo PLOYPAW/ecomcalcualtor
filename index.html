@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เครื่องมือคำนวณค่าธรรมเนียมการขาย - Mobile Friendly</title>
+    <title>เครื่องมือคำนวณค่าธรรมเนียมการขายออนไลน์ - Ploypaw</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -53,8 +53,9 @@
             @apply block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider ml-1;
         }
 
+        /* Result Card - Adjusted to Light Theme with Dark Text */
         .result-card {
-            @apply bg-[#1e293b] rounded-[2rem] p-6 md:p-8 text-white shadow-xl flex flex-col justify-center;
+            @apply bg-gray-50 rounded-[2rem] p-6 md:p-8 text-gray-800 border border-gray-200 shadow-inner flex flex-col justify-center;
         }
 
         .btn-action {
@@ -62,7 +63,7 @@
         }
 
         .fee-row {
-            @apply flex justify-between text-sm text-gray-500 border-b border-gray-50 py-2 last:border-0;
+            @apply flex justify-between text-sm text-gray-500 border-b border-gray-200 py-2 last:border-0;
         }
 
         /* Toggle Switch Styling */
@@ -297,19 +298,20 @@
                             </div>
                         </div>
 
+                        <!-- Result Card - Dark Text Theme -->
                         <div class="result-card">
                             <div class="text-center mb-6">
-                                <p class="text-white/50 text-[10px] uppercase tracking-widest mb-1">กำไรหลังหักค่าธรรมเนียม</p>
-                                <div id="profit-${index}" class="text-4xl md:text-5xl font-bold tracking-tight">฿0.00</div>
+                                <p class="text-gray-400 text-[10px] uppercase font-semibold tracking-widest mb-1">กำไรหลังหักค่าธรรมเนียม</p>
+                                <div id="profit-${index}" class="text-4xl md:text-5xl font-bold tracking-tight text-gray-800">฿0.00</div>
                             </div>
-                            <div class="space-y-3 pt-6 border-t border-white/10">
+                            <div class="space-y-3 pt-6 border-t border-gray-200">
                                 <div class="flex justify-between text-sm">
-                                    <span class="text-white/60">ยอดรับสุทธิ:</span>
-                                    <span id="payout-${index}" class="font-bold">฿0.00</span>
+                                    <span class="text-gray-500 font-medium">ยอดรับสุทธิ:</span>
+                                    <span id="payout-${index}" class="text-gray-800 font-bold">฿0.00</span>
                                 </div>
                                 <div class="flex justify-between items-center">
-                                    <span class="text-white/60 text-xs">Margin:</span>
-                                    <span id="margin-${index}" class="px-4 py-1.5 rounded-full text-xs font-black bg-white/10">0%</span>
+                                    <span class="text-gray-500 text-xs font-medium">Margin:</span>
+                                    <span id="margin-${index}" class="px-4 py-1.5 rounded-full text-xs font-black bg-gray-200 text-gray-700">0%</span>
                                 </div>
                             </div>
                         </div>
@@ -335,7 +337,6 @@
                 let breakdownHtml = '';
                 if (item.price > 0) {
                     config.fees.forEach(f => {
-                        // Skip if it's a toggle fee and it's not enabled
                         if (f.toggle && !f.enabled) return;
 
                         let amount = 0;
@@ -359,11 +360,25 @@
                 const profitEl = document.getElementById(`profit-${index}`);
                 if (profitEl) {
                     profitEl.innerText = `฿${profit.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-                    profitEl.style.color = profit >= 0 ? '#fff' : '#f87171';
+                    
+                    if (profit < 0) {
+                        profitEl.style.color = '#ef4444'; // Red for loss
+                    } else {
+                        profitEl.style.color = '#1f2937'; // Dark gray/black for profit
+                    }
+
                     document.getElementById(`payout-${index}`).innerText = `฿${payout.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
                     const mEl = document.getElementById(`margin-${index}`);
                     mEl.innerText = `${margin.toFixed(2)}%`;
-                    mEl.style.color = margin >= 0 ? '#4ade80' : '#f87171';
+                    
+                    if (margin < 0) {
+                        mEl.style.color = '#ef4444';
+                        mEl.style.backgroundColor = '#fee2e2';
+                    } else {
+                        mEl.style.color = '#059669'; // Green for positive margin
+                        mEl.style.backgroundColor = '#d1fae5';
+                    }
+                    
                     document.getElementById(`breakdown-${index}`).innerHTML = breakdownHtml;
                 }
             });
