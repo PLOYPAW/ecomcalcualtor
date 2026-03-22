@@ -1,14 +1,37 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Search, ArrowUpDown, Plus, Trash2, Settings, LayoutDashboard, 
-  FileSpreadsheet, CheckCircle2, AlertCircle, Percent, DollarSign,
-  Link, DownloadCloud, Loader2, RefreshCw
+  CheckCircle2, AlertCircle, Percent, DollarSign,
+  Link, DownloadCloud, Loader2, RefreshCw, ExternalLink
 } from 'lucide-react';
+/**
+ * CONFIGURATION
+ * มอดูลสำหรับตั้งค่าเริ่มต้น
+ */
+const THEME_COLOR = '#F96096';
+const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTO1G-j9WY2a_dzGOIDt_ei0ILzcfAM_Jq0p8MqohoUQY9ht0mLakj0KmjHoJQCP4CCLIFgQPNSuweR/pubhtml?gid=507359461&single=true';
 
-// สีหลักของ Theme (Pink F96096)
-const themeColor = '#F96096';
+const INITIAL_CHANNELS = [
+  {
+    id: 'ch-shopee',
+    name: 'Shopee',
+    fees: [
+      { id: 'f1', name: 'Service Fee', type: 'percent', value: 5.35 },
+      { id: 'f2', name: 'Transaction Fee', type: 'percent', value: 3.21 }
+    ]
+  },
+  {
+    id: 'ch-tiktok',
+    name: 'TikTok Shop',
+    fees: [
+      { id: 'f3', name: 'Commission Fee', type: 'percent', value: 4.0 },
+      { id: 'f4', name: 'Transaction Fee', type: 'percent', value: 3.0 }
+    ]
+  }
+];
 
 export default function App() {
+  // --- States ---
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
@@ -16,31 +39,22 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [importStatus, setImportStatus] = useState(null);
 
-  // ลิงก์ Google Sheet จากผู้ใช้
-  const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTO1G-j9WY2a_dzGOIDt_ei0ILzcfAM_Jq0p8MqohoUQY9ht0mLakj0KmjHoJQCP4CCLIFgQPNSuweR/pubhtml?gid=507359461&single=true';
+  // Load channels from localStorage or fallback to initial
+  const [channels, setChannels] = useState(() => {
+    const saved = localStorage.getItem('ecom_channels');
+    return saved ? JSON.parse(saved) : INITIAL_CHANNELS;
+  });
 
-  // ตั้งค่าช่องทางการขายเริ่มต้น
-  const [channels, setChannels] = useState([
-    {
-      id: 1,
-      name: 'Shopee',
-      fees: [
-        { id: 1, name: 'Service Fee', type: 'percent', value: 5.35 },
-        { id: 2, name: 'Transaction Fee', type: 'percent', value: 3.21 }
-      ]
-    },
-    {
-      id: 2,
-      name: 'TikTok Shop',
-      fees: [
-        { id: 1, name: 'Commission Fee', type: 'percent', value: 4.0 },
-        { id: 2, name: 'Transaction Fee', type: 'percent', value: 3.0 }
-      ]
-    }
-  ]);
+  // Save channels to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('ecom_channels', JSON.stringify(channels));
+  }, [channels]);
 
-  // ฟังก์ชันแยกข้อมูล CSV แบบรองรับ Quote
-  const parseCSV = (text) => {
+  /**
+   * DATA FETCHING & PARSING
+   * ฟังก์ชันจัดการข้อมูลจาก Google Sheet
+   */
+  const parseCSV = useCallback((text) => {
     const rows = [];
     let currentRow = [];
     let currentCell = '';
@@ -63,70 +77,68 @@ export default function App() {
       currentRow.push(currentCell); rows.push(currentRow);
     }
     return rows;
-  };
+  }, []);
 
-  // ฟังก์ชันดึงข้อมูลจาก Google Sheet
-  const fetchSheetData = async () => {
-    setIsLoading(true);
+  const fetchSheetData = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     setImportStatus(null);
     try {
-      // แปลงลิงก์ pubhtml เป็น CSV
-      const csvUrl = sheetUrl.replace('/pubhtml', '/pub') + (sheetUrl.includes('?') ? '&' : '?') + 'output=csv';
+      const csvUrl = DEFAULT_SHEET_URL.replace('/pubhtml', '/pub') + (DEFAULT_SHEET_URL.includes('?') ? '&' : '?') + 'output=csv';
       
       const response = await fetch(csvUrl);
-      if (!response.ok) throw new Error('Network response was not ok');
+      if (!response.ok) throw new Error('ไม่สามารถเชื่อมต่อกับ Google Sheet ได้');
       const text = await response.text();
       
       const rows = parseCSV(text);
-      if (rows.length < 2) throw new Error('No data found');
+      if (rows.length < 2) throw new Error('ไม่พบข้อมูลในไฟล์ที่เลือก');
 
-      // อ่านหัวตาราง (Headers)
       const headers = rows[0].map(h => h.trim().toLowerCase());
       
-      // หาตำแหน่งคอลัมน์ตามที่ระบุ
-      const idxBrand = headers.indexOf('brand');
-      const idxName = headers.indexOf('name');
-      const idxSku = headers.indexOf('sku');
-      const idxSize = headers.indexOf('size');
-      const idxCost = headers.indexOf('net_cost');
-      const idxPrice = headers.indexOf('price_main');
+      // Column Indices Mapping
+      const idx = {
+        brand: headers.indexOf('brand'),
+        name: headers.indexOf('name'),
+        sku: headers.indexOf('sku'),
+        size: headers.indexOf('size'),
+        cost: headers.indexOf('net_cost'),
+        price: headers.indexOf('price_main')
+      };
 
-      const mappedData = [];
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (row.length < 2) continue;
+      const mappedData = rows.slice(1).filter(row => row.length > 1).map((row, i) => {
+        const getVal = (index) => index >= 0 && row[index] ? row[index].trim() : '';
+        const cost = parseFloat(getVal(idx.cost).replace(/,/g, '')) || 0;
+        const price = parseFloat(getVal(idx.price).replace(/,/g, '')) || 0;
 
-        const getVal = (idx) => idx >= 0 && row[idx] ? row[idx].trim() : '';
-        const costVal = parseFloat(getVal(idxCost).replace(/,/g, '')) || 0;
-        const priceVal = parseFloat(getVal(idxPrice).replace(/,/g, '')) || 0;
-
-        mappedData.push({
-          id: `item-${i}-${Date.now()}`,
-          brand: getVal(idxBrand) || 'ไม่ระบุแบรนด์',
-          name: getVal(idxName) || 'ไม่มีชื่อสินค้า',
-          option: getVal(idxSku) || '-',
-          size: getVal(idxSize) || '-',
-          cost: costVal,
-          price: priceVal
-        });
-      }
+        return {
+          id: `product-${i}-${Date.now()}`,
+          brand: getVal(idx.brand) || 'ไม่ระบุแบรนด์',
+          name: getVal(idx.name) || 'ไม่มีชื่อสินค้า',
+          option: getVal(idx.sku) || '-',
+          size: getVal(idx.size) || '-',
+          cost,
+          price
+        };
+      });
 
       setProducts(mappedData);
-      setImportStatus({ type: 'success', message: `ดึงข้อมูลสำเร็จ ${mappedData.length} รายการ` });
+      setImportStatus({ type: 'success', message: `อัปเดตข้อมูลสำเร็จ ${mappedData.length} รายการ` });
     } catch (error) {
       console.error('Fetch Error:', error);
-      setImportStatus({ type: 'error', message: 'ไม่สามารถดึงข้อมูลได้ โปรดตรวจสอบการแชร์ไฟล์ Google Sheet' });
+      setImportStatus({ type: 'error', message: error.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล' });
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
-  // ดึงข้อมูลครั้งแรกเมื่อโหลดแอป
   useEffect(() => {
     fetchSheetData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ระบบค้นหาและจัดเรียง
+  /**
+   * BUSINESS LOGIC
+   * การคำนวณและประมวลผลข้อมูล
+   */
   const processedProducts = useMemo(() => {
     let result = [...products];
     if (searchQuery) {
@@ -147,13 +159,13 @@ export default function App() {
     return result;
   }, [products, searchQuery, sortAsc]);
 
-  // คำนวณค่าธรรมเนียมและกำไร
   const calculateMetrics = (price, cost, channel) => {
     let totalPct = 0;
     let totalFixed = 0;
     channel.fees.forEach(f => {
-      if (f.type === 'percent') totalPct += parseFloat(f.value || 0);
-      else totalFixed += parseFloat(f.value || 0);
+      const val = parseFloat(f.value || 0);
+      if (f.type === 'percent') totalPct += val;
+      else totalFixed += val;
     });
 
     const feeAmount = (price * (totalPct / 100)) + totalFixed;
@@ -166,123 +178,167 @@ export default function App() {
 
   const formatNum = (n) => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // จัดการช่องทางขาย
-  const addChannel = () => setChannels([...channels, { id: Date.now(), name: 'ช่องทางใหม่', fees: [] }]);
-  const removeChannel = (id) => setChannels(channels.filter(c => c.id !== id));
-  const updateChannelName = (id, name) => setChannels(channels.map(c => c.id === id ? { ...c, name } : c));
-  const addFee = (cid) => setChannels(channels.map(c => c.id === cid ? { ...c, fees: [...c.fees, { id: Date.now(), name: 'ค่าธรรมเนียม', type: 'percent', value: 0 }] } : c));
-  const updateFee = (cid, fid, field, val) => setChannels(channels.map(c => c.id === cid ? { ...c, fees: c.fees.map(f => f.id === fid ? { ...f, [field]: val } : f) } : c));
-  const removeFee = (cid, fid) => setChannels(channels.map(c => c.id === cid ? { ...c, fees: c.fees.filter(f => f.id !== fid) } : c));
+  // --- Handlers ---
+  const handleAddChannel = () => setChannels([...channels, { id: `ch-${Date.now()}`, name: 'ช่องทางใหม่', fees: [] }]);
+  const handleRemoveChannel = (id) => setChannels(channels.filter(c => c.id !== id));
+  const handleUpdateChannelName = (id, name) => setChannels(channels.map(c => c.id === id ? { ...c, name } : c));
+  const handleAddFee = (cid) => setChannels(channels.map(c => c.id === cid ? { ...c, fees: [...c.fees, { id: `fee-${Date.now()}`, name: 'ค่าธรรมเนียมใหม่', type: 'percent', value: 0 }] } : c));
+  const handleUpdateFee = (cid, fid, field, val) => setChannels(channels.map(c => c.id === cid ? { ...c, fees: c.fees.map(f => f.id === fid ? { ...f, [field]: val } : f) } : c));
+  const handleRemoveFee = (cid, fid) => setChannels(channels.map(c => c.id === cid ? { ...c, fees: c.fees.filter(f => f.id !== fid) } : c));
 
   return (
-    <div className="min-h-screen bg-pink-50 font-sans text-gray-800 pb-10">
-      <nav className="bg-white sticky top-0 z-10 shadow-sm border-b border-pink-100">
-        <div className="max-w-7xl mx-auto px-4 flex justify-between h-16 items-center">
-          <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: themeColor }}>
-              <DollarSign size={24} />
+    <div className="min-h-screen bg-pink-50/30 font-sans text-slate-800 pb-20">
+      {/* Header Navigation */}
+      <header className="bg-white sticky top-0 z-30 shadow-sm border-b border-pink-100">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: THEME_COLOR }}>
+              <DollarSign size={22} />
             </div>
-            <h1 className="text-xl font-bold tracking-tight" style={{ color: themeColor }}>E-Com Pricing</h1>
+            <div>
+              <h1 className="text-lg font-bold leading-none" style={{ color: THEME_COLOR }}>Price Analytics</h1>
+              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-1">E-Commerce Management</p>
+            </div>
           </div>
-          <div className="flex bg-pink-50 p-1 rounded-lg">
-            <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'dashboard' ? 'bg-white text-[#F96096] shadow-sm' : 'text-gray-500 hover:text-[#F96096]'}`}>
-              Dashboard
+          
+          <div className="flex bg-slate-100 p-1 rounded-xl">
+            <button 
+              onClick={() => setActiveTab('dashboard')} 
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'dashboard' ? 'bg-white text-[#F96096] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <LayoutDashboard size={16} />
+              <span className="hidden sm:inline">Dashboard</span>
             </button>
-            <button onClick={() => setActiveTab('channels')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'channels' ? 'bg-white text-[#F96096] shadow-sm' : 'text-gray-500 hover:text-[#F96096]'}`}>
-              ตั้งค่าธรรมเนียม
+            <button 
+              onClick={() => setActiveTab('channels')} 
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'channels' ? 'bg-white text-[#F96096] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <Settings size={16} />
+              <span className="hidden sm:inline">Settings</span>
             </button>
           </div>
         </div>
-      </nav>
+      </header>
 
-      <main className="max-w-7xl mx-auto px-4 mt-8">
+      <main className="max-w-7xl mx-auto px-4 mt-6">
         {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            {/* Toolbar */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-pink-100 flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div className="relative w-full md:w-96">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Search & Action Bar */}
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-pink-100 flex flex-col lg:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full lg:w-1/3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                 <input 
                   type="text" 
-                  placeholder="ค้นหาแบรนด์ หรือ ชื่อสินค้า..." 
-                  className="w-full pl-10 pr-4 py-2 bg-pink-50/50 border-none rounded-xl focus:ring-2 focus:ring-[#F96096] text-sm"
+                  placeholder="ค้นหาตามแบรนด์, สินค้า..." 
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-[#F96096] focus:bg-white transition-all text-sm outline-none"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <div className="flex gap-2 w-full md:w-auto">
-                <button onClick={fetchSheetData} className="flex-1 md:flex-none flex items-center justify-center px-4 py-2 bg-white border border-pink-200 text-[#F96096] rounded-xl hover:bg-pink-50 transition-colors text-sm font-medium">
+
+              <div className="flex items-center gap-3 w-full lg:w-auto">
+                <div className="flex-1 lg:flex-none flex items-center px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-500">
+                  <span className="mr-2">Total:</span>
+                  <span className="text-[#F96096] font-bold">{processedProducts.length} items</span>
+                </div>
+                <button 
+                  onClick={() => fetchSheetData()} 
+                  disabled={isLoading}
+                  className="flex-1 lg:flex-none flex items-center justify-center px-4 py-2.5 bg-white border border-pink-200 text-[#F96096] rounded-xl hover:bg-pink-50 transition-all text-sm font-bold shadow-sm"
+                >
                   {isLoading ? <Loader2 className="mr-2 animate-spin" size={18} /> : <RefreshCw className="mr-2" size={18} />}
-                  รีเฟรชข้อมูล
+                  Refresh Data
                 </button>
-                <button onClick={() => setSortAsc(!sortAsc)} className="flex-1 md:flex-none flex items-center justify-center px-4 py-2 bg-[#F96096] text-white rounded-xl shadow-md shadow-pink-200 hover:opacity-90 transition-all text-sm font-medium">
+                <button 
+                  onClick={() => setSortAsc(!sortAsc)} 
+                  className="flex-1 lg:flex-none flex items-center justify-center px-4 py-2.5 text-white rounded-xl shadow-lg shadow-pink-100 hover:brightness-105 active:scale-95 transition-all text-sm font-bold"
+                  style={{ backgroundColor: THEME_COLOR }}
+                >
                   <ArrowUpDown className="mr-2" size={18} />
-                  เรียง: {sortAsc ? 'แบรนด์ ก-ฮ' : 'แบรนด์ ฮ-ก'}
+                  Sort: {sortAsc ? 'A-Z' : 'Z-A'}
                 </button>
               </div>
             </div>
 
-            {/* Status Info */}
+            {/* Notification Toast (Inline) */}
             {importStatus && (
-              <div className={`p-4 rounded-xl flex items-center text-sm font-medium border ${importStatus.type === 'success' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
-                {importStatus.type === 'success' ? <CheckCircle2 size={18} className="mr-2" /> : <AlertCircle size={18} className="mr-2" />}
-                {importStatus.message}
+              <div className={`p-4 rounded-xl flex items-center justify-between text-sm font-medium border ${importStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
+                <div className="flex items-center">
+                  {importStatus.type === 'success' ? <CheckCircle2 size={18} className="mr-2" /> : <AlertCircle size={18} className="mr-2" />}
+                  {importStatus.message}
+                </div>
+                <button onClick={() => setImportStatus(null)} className="text-current opacity-50 hover:opacity-100">&times;</button>
               </div>
             )}
 
-            {/* Dashboard Table */}
+            {/* Main Table Container */}
             <div className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
+                <table className="w-full text-left border-separate border-spacing-0">
                   <thead>
-                    <tr className="bg-pink-50/50 border-b border-pink-100">
-                      <th colSpan="4" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-pink-100">ข้อมูลสินค้า</th>
-                      <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-pink-100">ต้นทุน/ขาย</th>
+                    <tr className="bg-slate-50">
+                      <th colSpan="4" className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] border-b border-r border-slate-100">Product Info</th>
+                      <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] border-b border-r border-slate-100">Pricing</th>
                       {channels.map(c => (
-                        <th key={c.id} colSpan="3" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider border-r last:border-r-0 border-pink-100" style={{ color: themeColor }}>
-                          {c.name}
+                        <th key={c.id} colSpan="3" className="px-6 py-4 text-center text-[10px] font-bold uppercase tracking-[0.1em] border-b border-r last:border-r-0 border-pink-100 bg-pink-50/30" style={{ color: THEME_COLOR }}>
+                          {c.name} Performance
                         </th>
                       ))}
                     </tr>
-                    <tr className="bg-white border-b border-pink-50 text-[11px] font-bold text-gray-400 uppercase">
-                      <th className="px-6 py-2 text-left">แบรนด์</th>
-                      <th className="px-6 py-2 text-left">ชื่อสินค้า</th>
-                      <th className="px-6 py-2 text-left">ตัวเลือก</th>
-                      <th className="px-6 py-2 text-left border-r border-pink-50">จำนวน</th>
-                      <th className="px-6 py-2 text-right border-r border-pink-50">Cost | Price</th>
+                    <tr className="bg-white border-b border-slate-50 text-[10px] text-slate-400 uppercase font-bold sticky top-0 shadow-sm">
+                      <th className="px-6 py-3 border-b border-slate-50">Brand</th>
+                      <th className="px-6 py-3 border-b border-slate-50">Name</th>
+                      <th className="px-6 py-3 border-b border-slate-50">Option (SKU)</th>
+                      <th className="px-6 py-3 border-b border-r border-slate-50">Size</th>
+                      <th className="px-6 py-3 text-right border-b border-r border-slate-50">Cost | Sale</th>
                       {channels.map(c => (
                         <React.Fragment key={`sub-${c.id}`}>
-                          <th className="px-4 py-2 text-right bg-pink-50/20">เงินสุทธิ</th>
-                          <th className="px-4 py-2 text-right bg-pink-50/20">กำไร(฿)</th>
-                          <th className="px-4 py-2 text-right bg-pink-50/20 border-r last:border-r-0 border-pink-50">กำไร(%)</th>
+                          <th className="px-4 py-3 text-right border-b border-slate-50 bg-pink-50/10">Net Income</th>
+                          <th className="px-4 py-3 text-right border-b border-slate-50 bg-pink-50/10">Profit (฿)</th>
+                          <th className="px-4 py-3 text-right border-b border-r last:border-r-0 border-slate-50 bg-pink-50/10">Margin (%)</th>
                         </React.Fragment>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-pink-50">
-                    {processedProducts.length === 0 ? (
-                      <tr><td colSpan="100" className="px-6 py-20 text-center text-gray-400 italic">ไม่พบข้อมูล หรือกำลังโหลด...</td></tr>
+                  <tbody className="divide-y divide-slate-50">
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan="100%" className="px-6 py-20 text-center">
+                          <Loader2 className="mx-auto animate-spin text-pink-300 mb-3" size={40} />
+                          <p className="text-slate-400 font-medium animate-pulse">กำลังซิงค์ข้อมูลจากคลาวด์...</p>
+                        </td>
+                      </tr>
+                    ) : processedProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan="100%" className="px-6 py-20 text-center">
+                          <div className="max-w-xs mx-auto text-slate-400">
+                            <AlertCircle className="mx-auto mb-3 opacity-20" size={48} />
+                            <p className="font-semibold">ไม่พบข้อมูลที่ค้นหา</p>
+                            <p className="text-xs mt-1">ลองใช้คำค้นหาอื่น หรือกด Refresh เพื่ออัปเดตข้อมูล</p>
+                          </div>
+                        </td>
+                      </tr>
                     ) : (
                       processedProducts.map(p => (
-                        <tr key={p.id} className="hover:bg-pink-50/30 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">{p.brand}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 max-w-[200px] truncate" title={p.name}>{p.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">{p.option}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 border-r border-pink-50">{p.size}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right border-r border-pink-50">
-                            <div className="text-[10px] text-gray-400">ต้นทุน: {formatNum(p.cost)}</div>
-                            <div className="text-sm font-bold text-gray-800 underline decoration-pink-300 decoration-2 underline-offset-4">{formatNum(p.price)}</div>
+                        <tr key={p.id} className="group hover:bg-slate-50/80 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-700">{p.brand}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 max-w-[180px] truncate" title={p.name}>{p.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-400 font-mono bg-slate-50/50">{p.option}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 border-r border-slate-50">{p.size}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right border-r border-slate-50">
+                            <div className="text-[10px] font-bold text-slate-300">C: {formatNum(p.cost)}</div>
+                            <div className="text-sm font-black text-slate-800 tracking-tight">{formatNum(p.price)}</div>
                           </td>
                           {channels.map(c => {
                             const { netIncome, profit, profitMargin } = calculateMetrics(p.price, p.cost, c);
                             const isLoss = profit < 0;
                             return (
                               <React.Fragment key={`cell-${p.id}-${c.id}`}>
-                                <td className="px-4 py-4 text-right text-sm font-bold text-blue-600 bg-blue-50/10">{formatNum(netIncome)}</td>
-                                <td className={`px-4 py-4 text-right text-sm font-bold ${isLoss ? 'text-red-500' : 'text-green-600'} bg-pink-50/10`}>
+                                <td className="px-4 py-4 text-right text-sm font-bold text-blue-600/80">{formatNum(netIncome)}</td>
+                                <td className={`px-4 py-4 text-right text-sm font-bold ${isLoss ? 'text-rose-500' : 'text-emerald-600'}`}>
                                   {formatNum(profit)}
                                 </td>
-                                <td className={`px-4 py-4 text-right text-xs font-black border-r last:border-r-0 border-pink-50 ${isLoss ? 'text-red-600 bg-red-50/30' : 'text-green-700 bg-green-50/30'}`}>
+                                <td className={`px-4 py-4 text-right text-xs font-black border-r last:border-r-0 border-slate-50 ${isLoss ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-700'}`}>
                                   {profitMargin.toFixed(1)}%
                                 </td>
                               </React.Fragment>
@@ -299,68 +355,112 @@ export default function App() {
         )}
 
         {activeTab === 'channels' && (
-          <div className="max-w-3xl mx-auto space-y-6">
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
-              <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                <Settings className="mr-2" style={{ color: themeColor }} /> ตั้งค่าช่องทางและค่าธรรมเนียม
-              </h2>
-              <button onClick={addChannel} className="px-4 py-2 text-sm font-bold text-white rounded-xl shadow-lg hover:opacity-90 transition-all flex items-center" style={{ backgroundColor: themeColor }}>
-                <Plus size={18} className="mr-1" /> เพิ่มช่องทาง
+          <div className="max-w-3xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-pink-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Channel Settings</h2>
+                <p className="text-xs text-slate-400 mt-1 italic">* ข้อมูลจะถูกบันทึกไว้ใน Browser ของคุณอัตโนมัติ</p>
+              </div>
+              <button 
+                onClick={handleAddChannel} 
+                className="flex items-center px-4 py-2.5 text-white font-bold rounded-xl shadow-lg hover:brightness-105 active:scale-95 transition-all text-sm" 
+                style={{ backgroundColor: THEME_COLOR }}
+              >
+                <Plus size={18} className="mr-1.5" /> เพิ่มช่องทาง
               </button>
             </div>
 
-            {channels.map((c, idx) => (
-              <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden">
-                <div className="bg-pink-50/50 px-6 py-4 flex justify-between items-center border-b border-pink-100">
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-lg bg-white border border-pink-200 flex items-center justify-center font-bold text-xs" style={{ color: themeColor }}>{idx + 1}</span>
-                    <input 
-                      type="text" 
-                      value={c.name} 
-                      onChange={(e) => updateChannelName(c.id, e.target.value)}
-                      className="bg-transparent font-bold border-none focus:ring-0 p-0 text-gray-700 text-lg"
-                    />
-                  </div>
-                  <button onClick={() => removeChannel(c.id)} className="text-red-400 hover:text-red-600 transition-colors">
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-                <div className="p-6 space-y-4">
-                  {c.fees.map(f => (
-                    <div key={f.id} className="flex flex-col sm:flex-row gap-4 items-center bg-gray-50/50 p-3 rounded-xl border border-gray-100">
+            <div className="grid gap-6">
+              {channels.map((c, idx) => (
+                <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden group">
+                  <div className="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-100">
+                    <div className="flex items-center gap-4 flex-1">
+                      <span className="w-8 h-8 rounded-lg bg-white border border-pink-200 flex items-center justify-center font-bold text-xs shadow-sm" style={{ color: THEME_COLOR }}>{idx + 1}</span>
                       <input 
                         type="text" 
-                        value={f.name} 
-                        onChange={(e) => updateFee(c.id, f.id, 'name', e.target.value)}
-                        placeholder="ชื่อค่าธรรมเนียม" 
-                        className="flex-1 text-sm bg-white border-gray-200 rounded-lg focus:ring-[#F96096] focus:border-[#F96096]"
+                        value={c.name} 
+                        onChange={(e) => handleUpdateChannelName(c.id, e.target.value)}
+                        className="bg-transparent font-bold border-none focus:ring-0 p-0 text-slate-700 text-lg w-full max-w-sm"
+                        placeholder="ชื่อช่องทางการขาย..."
                       />
-                      <div className="flex bg-white rounded-lg p-1 border border-gray-200">
-                        <button onClick={() => updateFee(c.id, f.id, 'type', 'percent')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${f.type === 'percent' ? 'bg-[#F96096] text-white shadow-md' : 'text-gray-400'}`}>%</button>
-                        <button onClick={() => updateFee(c.id, f.id, 'type', 'fixed')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${f.type === 'fixed' ? 'bg-[#F96096] text-white shadow-md' : 'text-gray-400'}`}>฿</button>
-                      </div>
-                      <div className="w-full sm:w-32">
-                        <input 
-                          type="number" 
-                          value={f.value} 
-                          onChange={(e) => updateFee(c.id, f.id, 'value', e.target.value)}
-                          className="w-full text-right text-sm border-gray-200 rounded-lg focus:ring-[#F96096]"
-                        />
-                      </div>
-                      <button onClick={() => removeFee(c.id, f.id)} className="text-gray-300 hover:text-red-500">
-                        <Trash2 size={16} />
-                      </button>
                     </div>
-                  ))}
-                  <button onClick={() => addFee(c.id)} className="w-full py-3 border-2 border-dashed border-pink-100 rounded-xl text-pink-400 hover:border-pink-300 hover:text-pink-500 transition-all text-xs font-bold flex items-center justify-center">
-                    <Plus size={14} className="mr-1" /> เพิ่มค่าธรรมเนียม
-                  </button>
+                    <button onClick={() => handleRemoveChannel(c.id)} className="text-slate-300 hover:text-rose-500 transition-colors">
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
+                  
+                  <div className="p-6 space-y-4">
+                    {c.fees.length === 0 && (
+                      <p className="text-center text-xs text-slate-400 py-4 italic">ยังไม่มีค่าธรรมเนียมสำหรับช่องทางนี้</p>
+                    )}
+                    
+                    {c.fees.map(f => (
+                      <div key={f.id} className="flex flex-col sm:flex-row gap-4 items-center bg-slate-50/50 p-3.5 rounded-xl border border-slate-100/50 hover:border-pink-200 transition-all">
+                        <input 
+                          type="text" 
+                          value={f.name} 
+                          onChange={(e) => handleUpdateFee(c.id, f.id, 'name', e.target.value)}
+                          placeholder="ชื่อค่าธรรมเนียม (เช่น ค่า GP, ภาษี)" 
+                          className="flex-1 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#F96096] focus:border-[#F96096] px-3 py-2 outline-none"
+                        />
+                        <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
+                          <button onClick={() => handleUpdateFee(c.id, f.id, 'type', 'percent')} className={`px-4 py-1.5 text-xs font-black rounded-md transition-all ${f.type === 'percent' ? 'bg-[#F96096] text-white shadow-md' : 'text-slate-400'}`}>%</button>
+                          <button onClick={() => handleUpdateFee(c.id, f.id, 'type', 'fixed')} className={`px-4 py-1.5 text-xs font-black rounded-md transition-all ${f.type === 'fixed' ? 'bg-[#F96096] text-white shadow-md' : 'text-slate-400'}`}>฿</button>
+                        </div>
+                        <div className="w-full sm:w-32">
+                          <input 
+                            type="number" 
+                            value={f.value} 
+                            onChange={(e) => handleUpdateFee(c.id, f.id, 'value', e.target.value)}
+                            className="w-full text-right text-sm font-bold border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#F96096] px-3 py-2 outline-none bg-white"
+                          />
+                        </div>
+                        <button onClick={() => handleRemoveFee(c.id, f.id)} className="text-slate-200 hover:text-rose-500">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    ))}
+                    
+                    <button 
+                      onClick={() => handleAddFee(c.id)} 
+                      className="w-full py-3.5 border-2 border-dashed border-pink-100 rounded-2xl text-pink-300 hover:border-pink-300 hover:text-pink-400 hover:bg-pink-50/50 transition-all text-xs font-bold flex items-center justify-center"
+                    >
+                      <Plus size={16} className="mr-1.5" /> Add Fee Option
+                    </button>
+                  </div>
                 </div>
+              ))}
+            </div>
+
+            {/* GitHub Style Footer */}
+            <div className="pt-10 border-t border-pink-100 flex flex-col items-center text-center">
+              <div className="flex items-center space-x-2 text-slate-400 text-xs font-medium">
+                <FileSpreadsheet size={14} />
+                <span>Connected to Google Sheet</span>
               </div>
-            ))}
+              <a 
+                href={DEFAULT_SHEET_URL} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="mt-2 text-[10px] text-[#F96096] hover:underline flex items-center"
+              >
+                View Data Source <ExternalLink size={10} className="ml-1" />
+              </a>
+            </div>
           </div>
         )}
       </main>
+
+      {/* Persistent App Footer */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-pink-100 py-3 px-4 z-40">
+        <div className="max-w-7xl mx-auto flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+          <div>© 2024 E-Com Pricing Tool</div>
+          <div className="flex items-center">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></div>
+            System Online
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
