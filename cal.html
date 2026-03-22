@@ -1,0 +1,382 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.3">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">import React, { useState, useMemo, useEffect } from 'react';</p>
+<p class="p1">import {<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">  </span>Search, ArrowUpDown, Plus, Trash2, Settings, LayoutDashboard,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">  </span>FileSpreadsheet, CheckCircle2, AlertCircle, Percent, DollarSign,</p>
+<p class="p1"><span class="Apple-converted-space">  </span>Link, DownloadCloud, Loader2, RefreshCw</p>
+<p class="p1">} from 'lucide-react';</p>
+<p class="p2"><br></p>
+<p class="p1">// สีหลักของ Theme (Pink F96096)</p>
+<p class="p1">const themeColor = '#F96096';</p>
+<p class="p2"><br></p>
+<p class="p1">export default function App() {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [activeTab, setActiveTab] = useState('dashboard');</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [searchQuery, setSearchQuery] = useState('');</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [sortAsc, setSortAsc] = useState(true);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [products, setProducts] = useState([]);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [isLoading, setIsLoading] = useState(false);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [importStatus, setImportStatus] = useState(null);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// ลิงก์ Google Sheet จากผู้ใช้</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTO1G-j9WY2a_dzGOIDt_ei0ILzcfAM_Jq0p8MqohoUQY9ht0mLakj0KmjHoJQCP4CCLIFgQPNSuweR/pubhtml?gid=507359461&amp;single=true';</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// ตั้งค่าช่องทางการขายเริ่มต้น</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const [channels, setChannels] = useState([</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{</p>
+<p class="p1"><span class="Apple-converted-space">      </span>id: 1,</p>
+<p class="p1"><span class="Apple-converted-space">      </span>name: 'Shopee',</p>
+<p class="p1"><span class="Apple-converted-space">      </span>fees: [</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 1, name: 'Service Fee', type: 'percent', value: 5.35 },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 2, name: 'Transaction Fee', type: 'percent', value: 3.21 }</p>
+<p class="p1"><span class="Apple-converted-space">      </span>]</p>
+<p class="p1"><span class="Apple-converted-space">    </span>},</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{</p>
+<p class="p1"><span class="Apple-converted-space">      </span>id: 2,</p>
+<p class="p1"><span class="Apple-converted-space">      </span>name: 'TikTok Shop',</p>
+<p class="p1"><span class="Apple-converted-space">      </span>fees: [</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 1, name: 'Commission Fee', type: 'percent', value: 4.0 },</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{ id: 2, name: 'Transaction Fee', type: 'percent', value: 3.0 }</p>
+<p class="p1"><span class="Apple-converted-space">      </span>]</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>]);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// ฟังก์ชันแยกข้อมูล CSV แบบรองรับ Quote</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const parseCSV = (text) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const rows = [];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let currentRow = [];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let currentCell = '';</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let inQuotes = false;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>for (let i = 0; i &lt; text.length; i++) {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const char = text[i];</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (char === '"' &amp;&amp; text[i+1] === '"') {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>currentCell += '"'; i++;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (char === '"') {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>inQuotes = !inQuotes;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (char === ',' &amp;&amp; !inQuotes) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>currentRow.push(currentCell); currentCell = '';</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (char === '\n' &amp;&amp; !inQuotes) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>currentRow.push(currentCell); rows.push(currentRow); currentRow = []; currentCell = '';</p>
+<p class="p1"><span class="Apple-converted-space">      </span>} else if (char !== '\r') {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>currentCell += char;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (currentCell || currentRow.length) {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>currentRow.push(currentCell); rows.push(currentRow);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>return rows;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// ฟังก์ชันดึงข้อมูลจาก Google Sheet</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const fetchSheetData = async () =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setIsLoading(true);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setImportStatus(null);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>// แปลงลิงก์ pubhtml เป็น CSV</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const csvUrl = sheetUrl.replace('/pubhtml', '/pub') + (sheetUrl.includes('?') ? '&amp;' : '?') + 'output=csv';</p>
+<p class="p2"><span class="Apple-converted-space">      </span></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const response = await fetch(csvUrl);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (!response.ok) throw new Error('Network response was not ok');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const text = await response.text();</p>
+<p class="p2"><span class="Apple-converted-space">      </span></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const rows = parseCSV(text);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (rows.length &lt; 2) throw new Error('No data found');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// อ่านหัวตาราง (Headers)</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const headers = rows[0].map(h =&gt; h.trim().toLowerCase());</p>
+<p class="p2"><span class="Apple-converted-space">      </span></p>
+<p class="p1"><span class="Apple-converted-space">      </span>// หาตำแหน่งคอลัมน์ตามที่ระบุ</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const idxBrand = headers.indexOf('brand');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const idxName = headers.indexOf('name');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const idxSku = headers.indexOf('sku');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const idxSize = headers.indexOf('size');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const idxCost = headers.indexOf('net_cost');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const idxPrice = headers.indexOf('price_main');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const mappedData = [];</p>
+<p class="p1"><span class="Apple-converted-space">      </span>for (let i = 1; i &lt; rows.length; i++) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const row = rows[i];</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if (row.length &lt; 2) continue;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const getVal = (idx) =&gt; idx &gt;= 0 &amp;&amp; row[idx] ? row[idx].trim() : '';</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const costVal = parseFloat(getVal(idxCost).replace(/,/g, '')) || 0;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const priceVal = parseFloat(getVal(idxPrice).replace(/,/g, '')) || 0;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>mappedData.push({</p>
+<p class="p1"><span class="Apple-converted-space">          </span>id: `item-${i}-${Date.now()}`,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>brand: getVal(idxBrand) || 'ไม่ระบุแบรนด์',</p>
+<p class="p1"><span class="Apple-converted-space">          </span>name: getVal(idxName) || 'ไม่มีชื่อสินค้า',</p>
+<p class="p1"><span class="Apple-converted-space">          </span>option: getVal(idxSku) || '-',</p>
+<p class="p1"><span class="Apple-converted-space">          </span>size: getVal(idxSize) || '-',</p>
+<p class="p1"><span class="Apple-converted-space">          </span>cost: costVal,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>price: priceVal</p>
+<p class="p1"><span class="Apple-converted-space">        </span>});</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>setProducts(mappedData);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>setImportStatus({ type: 'success', message: `ดึงข้อมูลสำเร็จ ${mappedData.length} รายการ` });</p>
+<p class="p1"><span class="Apple-converted-space">    </span>} catch (error) {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>console.error('Fetch Error:', error);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>setImportStatus({ type: 'error', message: 'ไม่สามารถดึงข้อมูลได้ โปรดตรวจสอบการแชร์ไฟล์ Google Sheet' });</p>
+<p class="p1"><span class="Apple-converted-space">    </span>} finally {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>setIsLoading(false);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// ดึงข้อมูลครั้งแรกเมื่อโหลดแอป</p>
+<p class="p1"><span class="Apple-converted-space">  </span>useEffect(() =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>fetchSheetData();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}, []);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// ระบบค้นหาและจัดเรียง</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const processedProducts = useMemo(() =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let result = [...products];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (searchQuery) {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const q = searchQuery.toLowerCase();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>result = result.filter(p =&gt;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>p.brand.toLowerCase().includes(q) ||<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>p.name.toLowerCase().includes(q) ||</p>
+<p class="p1"><span class="Apple-converted-space">        </span>p.option.toLowerCase().includes(q)</p>
+<p class="p1"><span class="Apple-converted-space">      </span>);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>result.sort((a, b) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const brandComp = a.brand.localeCompare(b.brand, 'th');</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (brandComp !== 0) return sortAsc ? brandComp : -brandComp;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>return sortAsc ? a.name.localeCompare(b.name, 'th') : -a.name.localeCompare(b.name, 'th');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>return result;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}, [products, searchQuery, sortAsc]);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// คำนวณค่าธรรมเนียมและกำไร</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const calculateMetrics = (price, cost, channel) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let totalPct = 0;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let totalFixed = 0;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>channel.fees.forEach(f =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (f.type === 'percent') totalPct += parseFloat(f.value || 0);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>else totalFixed += parseFloat(f.value || 0);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const feeAmount = (price * (totalPct / 100)) + totalFixed;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const netIncome = price - feeAmount;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const profit = netIncome - cost;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const profitMargin = price &gt; 0 ? (profit / price) * 100 : 0;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>return { netIncome, profit, profitMargin };</p>
+<p class="p1"><span class="Apple-converted-space">  </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const formatNum = (n) =&gt; n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// จัดการช่องทางขาย</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const addChannel = () =&gt; setChannels([...channels, { id: Date.now(), name: 'ช่องทางใหม่', fees: [] }]);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const removeChannel = (id) =&gt; setChannels(channels.filter(c =&gt; c.id !== id));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const updateChannelName = (id, name) =&gt; setChannels(channels.map(c =&gt; c.id === id ? { ...c, name } : c));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const addFee = (cid) =&gt; setChannels(channels.map(c =&gt; c.id === cid ? { ...c, fees: [...c.fees, { id: Date.now(), name: 'ค่าธรรมเนียม', type: 'percent', value: 0 }] } : c));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const updateFee = (cid, fid, field, val) =&gt; setChannels(channels.map(c =&gt; c.id === cid ? { ...c, fees: c.fees.map(f =&gt; f.id === fid ? { ...f, [field]: val } : f) } : c));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const removeFee = (cid, fid) =&gt; setChannels(channels.map(c =&gt; c.id === cid ? { ...c, fees: c.fees.filter(f =&gt; f.id !== fid) } : c));</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div className="min-h-screen bg-pink-50 font-sans text-gray-800 pb-10"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;nav className="bg-white sticky top-0 z-10 shadow-sm border-b border-pink-100"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div className="max-w-7xl mx-auto px-4 flex justify-between h-16 items-center"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div className="flex items-center space-x-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: themeColor }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;DollarSign size={24} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;h1 className="text-xl font-bold tracking-tight" style={{ color: themeColor }}&gt;E-Com Pricing&lt;/h1&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div className="flex bg-pink-50 p-1 rounded-lg"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onClick={() =&gt; setActiveTab('dashboard')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'dashboard' ? 'bg-white text-[#F96096] shadow-sm' : 'text-gray-500 hover:text-[#F96096]'}`}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>Dashboard</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button onClick={() =&gt; setActiveTab('channels')} className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'channels' ? 'bg-white text-[#F96096] shadow-sm' : 'text-gray-500 hover:text-[#F96096]'}`}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>ตั้งค่าธรรมเนียม</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/nav&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;main className="max-w-7xl mx-auto px-4 mt-8"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>{activeTab === 'dashboard' &amp;&amp; (</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div className="space-y-6"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{/* Toolbar */}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div className="bg-white p-4 rounded-2xl shadow-sm border border-pink-100 flex flex-col md:flex-row gap-4 items-center justify-between"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div className="relative w-full md:w-96"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;input<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                  </span>type="text"<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                  </span>placeholder="ค้นหาแบรนด์ หรือ ชื่อสินค้า..."<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                  </span>className="w-full pl-10 pr-4 py-2 bg-pink-50/50 border-none rounded-xl focus:ring-2 focus:ring-[#F96096] text-sm"</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>value={searchQuery}</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>onChange={(e) =&gt; setSearchQuery(e.target.value)}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>/&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div className="flex gap-2 w-full md:w-auto"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;button onClick={fetchSheetData} className="flex-1 md:flex-none flex items-center justify-center px-4 py-2 bg-white border border-pink-200 text-[#F96096] rounded-xl hover:bg-pink-50 transition-colors text-sm font-medium"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>{isLoading ? &lt;Loader2 className="mr-2 animate-spin" size={18} /&gt; : &lt;RefreshCw className="mr-2" size={18} /&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>รีเฟรชข้อมูล</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;button onClick={() =&gt; setSortAsc(!sortAsc)} className="flex-1 md:flex-none flex items-center justify-center px-4 py-2 bg-[#F96096] text-white rounded-xl shadow-md shadow-pink-200 hover:opacity-90 transition-all text-sm font-medium"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;ArrowUpDown className="mr-2" size={18} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>เรียง: {sortAsc ? 'แบรนด์ ก-ฮ' : 'แบรนด์ ฮ-ก'}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>{/* Status Info */}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{importStatus &amp;&amp; (</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div className={`p-4 rounded-xl flex items-center text-sm font-medium border ${importStatus.type === 'success' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'}`}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>{importStatus.type === 'success' ? &lt;CheckCircle2 size={18} className="mr-2" /&gt; : &lt;AlertCircle size={18} className="mr-2" /&gt;}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>{importStatus.message}</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>)}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>{/* Dashboard Table */}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div className="overflow-x-auto"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;table className="w-full border-collapse"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;thead&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;tr className="bg-pink-50/50 border-b border-pink-100"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;th colSpan="4" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-pink-100"&gt;ข้อมูลสินค้า&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-pink-100"&gt;ต้นทุน/ขาย&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>{channels.map(c =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;th key={c.id} colSpan="3" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider border-r last:border-r-0 border-pink-100" style={{ color: themeColor }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>{c.name}</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;tr className="bg-white border-b border-pink-50 text-[11px] font-bold text-gray-400 uppercase"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;th className="px-6 py-2 text-left"&gt;แบรนด์&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;th className="px-6 py-2 text-left"&gt;ชื่อสินค้า&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;th className="px-6 py-2 text-left"&gt;ตัวเลือก&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;th className="px-6 py-2 text-left border-r border-pink-50"&gt;จำนวน&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;th className="px-6 py-2 text-right border-r border-pink-50"&gt;Cost | Price&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>{channels.map(c =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;React.Fragment key={`sub-${c.id}`}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th className="px-4 py-2 text-right bg-pink-50/20"&gt;เงินสุทธิ&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th className="px-4 py-2 text-right bg-pink-50/20"&gt;กำไร(฿)&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;th className="px-4 py-2 text-right bg-pink-50/20 border-r last:border-r-0 border-pink-50"&gt;กำไร(%)&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/React.Fragment&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/thead&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;tbody className="divide-y divide-pink-50"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>{processedProducts.length === 0 ? (</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;tr&gt;&lt;td colSpan="100" className="px-6 py-20 text-center text-gray-400 italic"&gt;ไม่พบข้อมูล หรือกำลังโหลด...&lt;/td&gt;&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>) : (</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>processedProducts.map(p =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;tr key={p.id} className="hover:bg-pink-50/30 transition-colors"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-700"&gt;{p.brand}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 max-w-[200px] truncate" title={p.name}&gt;{p.name}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500"&gt;{p.option}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 border-r border-pink-50"&gt;{p.size}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;td className="px-6 py-4 whitespace-nowrap text-right border-r border-pink-50"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div className="text-[10px] text-gray-400"&gt;ต้นทุน: {formatNum(p.cost)}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>&lt;div className="text-sm font-bold text-gray-800 underline decoration-pink-300 decoration-2 underline-offset-4"&gt;{formatNum(p.price)}&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>{channels.map(c =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>const { netIncome, profit, profitMargin } = calculateMetrics(p.price, p.cost, c);</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>const isLoss = profit &lt; 0;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>return (</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;React.Fragment key={`cell-${p.id}-${c.id}`}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;td className="px-4 py-4 text-right text-sm font-bold text-blue-600 bg-blue-50/10"&gt;{formatNum(netIncome)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;td className={`px-4 py-4 text-right text-sm font-bold ${isLoss ? 'text-red-500' : 'text-green-600'} bg-pink-50/10`}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                  </span>{formatNum(profit)}</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;td className={`px-4 py-4 text-right text-xs font-black border-r last:border-r-0 border-pink-50 ${isLoss ? 'text-red-600 bg-red-50/30' : 'text-green-700 bg-green-50/30'}`}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                                  </span>{profitMargin.toFixed(1)}%</p>
+<p class="p1"><span class="Apple-converted-space">                                </span>&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                              </span>&lt;/React.Fragment&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                            </span>);</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>})}</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>))</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>)}</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/tbody&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/table&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>)}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>{activeTab === 'channels' &amp;&amp; (</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;div className="max-w-3xl mx-auto space-y-6"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-pink-100"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;h2 className="text-xl font-bold text-gray-800 flex items-center"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;Settings className="mr-2" style={{ color: themeColor }} /&gt; ตั้งค่าช่องทางและค่าธรรมเนียม</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;button onClick={addChannel} className="px-4 py-2 text-sm font-bold text-white rounded-xl shadow-lg hover:opacity-90 transition-all flex items-center" style={{ backgroundColor: themeColor }}&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;Plus size={18} className="mr-1" /&gt; เพิ่มช่องทาง</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>{channels.map((c, idx) =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;div key={c.id} className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div className="bg-pink-50/50 px-6 py-4 flex justify-between items-center border-b border-pink-100"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;div className="flex items-center gap-3"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;span className="w-8 h-8 rounded-lg bg-white border border-pink-200 flex items-center justify-center font-bold text-xs" style={{ color: themeColor }}&gt;{idx + 1}&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;input<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                      </span>type="text"<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                      </span>value={c.name}<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                      </span>onChange={(e) =&gt; updateChannelName(c.id, e.target.value)}</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>className="bg-transparent font-bold border-none focus:ring-0 p-0 text-gray-700 text-lg"</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>/&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;button onClick={() =&gt; removeChannel(c.id)} className="text-red-400 hover:text-red-600 transition-colors"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;Trash2 size={18} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div className="p-6 space-y-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>{c.fees.map(f =&gt; (</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div key={f.id} className="flex flex-col sm:flex-row gap-4 items-center bg-gray-50/50 p-3 rounded-xl border border-gray-100"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;input<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                        </span>type="text"<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                        </span>value={f.name}<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                        </span>onChange={(e) =&gt; updateFee(c.id, f.id, 'name', e.target.value)}</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>placeholder="ชื่อค่าธรรมเนียม"<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                        </span>className="flex-1 text-sm bg-white border-gray-200 rounded-lg focus:ring-[#F96096] focus:border-[#F96096]"</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>/&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;div className="flex bg-white rounded-lg p-1 border border-gray-200"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;button onClick={() =&gt; updateFee(c.id, f.id, 'type', 'percent')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${f.type === 'percent' ? 'bg-[#F96096] text-white shadow-md' : 'text-gray-400'}`}&gt;%&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;button onClick={() =&gt; updateFee(c.id, f.id, 'type', 'fixed')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${f.type === 'fixed' ? 'bg-[#F96096] text-white shadow-md' : 'text-gray-400'}`}&gt;฿&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;div className="w-full sm:w-32"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;input<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                          </span>type="number"<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                          </span>value={f.value}<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                          </span>onChange={(e) =&gt; updateFee(c.id, f.id, 'value', e.target.value)}</p>
+<p class="p1"><span class="Apple-converted-space">                          </span>className="w-full text-right text-sm border-gray-200 rounded-lg focus:ring-[#F96096]"</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>/&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;button onClick={() =&gt; removeFee(c.id, f.id)} className="text-gray-300 hover:text-red-500"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;Trash2 size={16} /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;button onClick={() =&gt; addFee(c.id)} className="w-full py-3 border-2 border-dashed border-pink-100 rounded-xl text-pink-400 hover:border-pink-300 hover:text-pink-500 transition-all text-xs font-bold flex items-center justify-center"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;Plus size={14} className="mr-1" /&gt; เพิ่มค่าธรรมเนียม</p>
+<p class="p1"><span class="Apple-converted-space">                  </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">              </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>))}</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>)}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/main&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>);</p>
+<p class="p1">}</p>
+</body>
+</html>
