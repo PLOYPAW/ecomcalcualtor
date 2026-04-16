@@ -1,466 +1,428 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  Search, ArrowUpDown, Plus, Trash2, Settings, LayoutDashboard, 
-  CheckCircle2, AlertCircle, Percent, DollarSign,
-  Link, DownloadCloud, Loader2, RefreshCw, ExternalLink
+  Calculator, 
+  Settings2, 
+  TrendingUp, 
+  AlertCircle, 
+  Download, 
+  Save, 
+  Trash2, 
+  Percent, 
+  ChevronDown, 
+  ChevronUp,
+  Lightbulb
 } from 'lucide-react';
-/**
- * CONFIGURATION
- * มอดูลสำหรับตั้งค่าเริ่มต้น
- */
-const THEME_COLOR = '#F96096';
-const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTO1G-j9WY2a_dzGOIDt_ei0ILzcfAM_Jq0p8MqohoUQY9ht0mLakj0KmjHoJQCP4CCLIFgQPNSuweR/pubhtml?gid=507359461&single=true';
 
-const INITIAL_CHANNELS = [
-  {
-    id: 'ch-shopee',
-    name: 'Shopee',
-    fees: [
-      { id: 'f1', name: 'Service Fee', type: 'percent', value: 5.35 },
-      { id: 'f2', name: 'Transaction Fee', type: 'percent', value: 3.21 }
-    ]
-  },
-  {
-    id: 'ch-tiktok',
-    name: 'TikTok Shop',
-    fees: [
-      { id: 'f3', name: 'Commission Fee', type: 'percent', value: 4.0 },
-      { id: 'f4', name: 'Transaction Fee', type: 'percent', value: 3.0 }
-    ]
-  }
-];
-
-export default function App() {
-  // --- States ---
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortAsc, setSortAsc] = useState(true);
-  const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [importStatus, setImportStatus] = useState(null);
-
-  // Load channels from localStorage or fallback to initial
-  const [channels, setChannels] = useState(() => {
-    const saved = localStorage.getItem('ecom_channels');
-    return saved ? JSON.parse(saved) : INITIAL_CHANNELS;
+const App = () => {
+  // --- Core State ---
+  const [product, setProduct] = useState({
+    name: 'อาหารแมว Ploypaw สูตร Premium',
+    cost: 150,
+    basePrice: 299
   });
 
-  // Save channels to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('ecom_channels', JSON.stringify(channels));
-  }, [channels]);
+  const [fees, setFees] = useState({
+    platformFee: 3, // %
+    paymentFee: 3, // %
+    commissionFee: 2, // %
+    otherFix: 0, // THB
+    shippingSubsidy: 0 // THB
+  });
 
-  /**
-   * DATA FETCHING & PARSING
-   * ฟังก์ชันจัดการข้อมูลจาก Google Sheet
-   */
-  const parseCSV = useCallback((text) => {
-    const rows = [];
-    let currentRow = [];
-    let currentCell = '';
-    let inQuotes = false;
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      if (char === '"' && text[i+1] === '"') {
-        currentCell += '"'; i++;
-      } else if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        currentRow.push(currentCell); currentCell = '';
-      } else if (char === '\n' && !inQuotes) {
-        currentRow.push(currentCell); rows.push(currentRow); currentRow = []; currentCell = '';
-      } else if (char !== '\r') {
-        currentCell += char;
-      }
-    }
-    if (currentCell || currentRow.length) {
-      currentRow.push(currentCell); rows.push(currentRow);
-    }
-    return rows;
-  }, []);
+  const [scenarios, setScenarios] = useState({
+    promo: { discount: 10 },
+    campaign: { 
+      platformDiscount: 15, 
+      sellerShare: 5, // % ที่ร้านต้องช่วยออก
+      extraCommission: 3 
+    },
+    flashSale: { discount: 30, extraFee: 2 }
+  });
 
-  const fetchSheetData = async (silent = false) => {
-    if (!silent) setIsLoading(true);
-    setImportStatus(null);
-    try {
-      const csvUrl = DEFAULT_SHEET_URL.replace('/pubhtml', '/pub') + (DEFAULT_SHEET_URL.includes('?') ? '&' : '?') + 'output=csv';
-      
-      const response = await fetch(csvUrl);
-      if (!response.ok) throw new Error('ไม่สามารถเชื่อมต่อกับ Google Sheet ได้');
-      const text = await response.text();
-      
-      const rows = parseCSV(text);
-      if (rows.length < 2) throw new Error('ไม่พบข้อมูลในไฟล์ที่เลือก');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [savedSimulations, setSavedSimulations] = useState([]);
 
-      const headers = rows[0].map(h => h.trim().toLowerCase());
-      
-      // Column Indices Mapping
-      const idx = {
-        brand: headers.indexOf('brand'),
-        name: headers.indexOf('name'),
-        sku: headers.indexOf('sku'),
-        size: headers.indexOf('size'),
-        cost: headers.indexOf('net_cost'),
-        price: headers.indexOf('price_main')
-      };
+  // --- Calculation Logic ---
+  const calculateResult = (price, customFees = {}) => {
+    const activeFees = { ...fees, ...customFees };
+    const totalFeePercent = (activeFees.platformFee + activeFees.paymentFee + activeFees.commissionFee + (activeFees.extraCommission || 0) + (activeFees.extraFee || 0));
+    
+    const feeAmount = (price * (totalFeePercent / 100)) + activeFees.otherFix + activeFees.shippingSubsidy;
+    const netRevenue = price - feeAmount;
+    const profit = netRevenue - product.cost;
+    const margin = price > 0 ? (profit / price) * 100 : 0;
+    const breakEven = (product.cost + activeFees.otherFix + activeFees.shippingSubsidy) / (1 - (totalFeePercent / 100));
 
-      const mappedData = rows.slice(1).filter(row => row.length > 1).map((row, i) => {
-        const getVal = (index) => index >= 0 && row[index] ? row[index].trim() : '';
-        const cost = parseFloat(getVal(idx.cost).replace(/,/g, '')) || 0;
-        const price = parseFloat(getVal(idx.price).replace(/,/g, '')) || 0;
-
-        return {
-          id: `product-${i}-${Date.now()}`,
-          brand: getVal(idx.brand) || 'ไม่ระบุแบรนด์',
-          name: getVal(idx.name) || 'ไม่มีชื่อสินค้า',
-          option: getVal(idx.sku) || '-',
-          size: getVal(idx.size) || '-',
-          cost,
-          price
-        };
-      });
-
-      setProducts(mappedData);
-      setImportStatus({ type: 'success', message: `อัปเดตข้อมูลสำเร็จ ${mappedData.length} รายการ` });
-    } catch (error) {
-      console.error('Fetch Error:', error);
-      setImportStatus({ type: 'error', message: error.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูล' });
-    } finally {
-      if (!silent) setIsLoading(false);
-    }
+    return {
+      sellingPrice: price,
+      feeAmount,
+      netRevenue,
+      profit,
+      margin,
+      breakEven
+    };
   };
 
-  useEffect(() => {
-    fetchSheetData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const results = useMemo(() => {
+    const normal = calculateResult(product.basePrice);
+    
+    const promoPrice = product.basePrice * (1 - scenarios.promo.discount / 100);
+    const promo = calculateResult(promoPrice);
 
-  /**
-   * BUSINESS LOGIC
-   * การคำนวณและประมวลผลข้อมูล
-   */
-  const processedProducts = useMemo(() => {
-    let result = [...products];
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(p => 
-        p.brand.toLowerCase().includes(q) || 
-        p.name.toLowerCase().includes(q) ||
-        p.option.toLowerCase().includes(q)
-      );
-    }
-
-    result.sort((a, b) => {
-      const brandComp = a.brand.localeCompare(b.brand, 'th');
-      if (brandComp !== 0) return sortAsc ? brandComp : -brandComp;
-      return sortAsc ? a.name.localeCompare(b.name, 'th') : -a.name.localeCompare(b.name, 'th');
+    const campaignPrice = product.basePrice * (1 - (scenarios.campaign.sellerShare / 100)); 
+    // หมายเหตุ: ในแคมเปญ ราคาสุทธิที่ร้านได้จะลดลงตาม sellerShare
+    const campaign = calculateResult(campaignPrice, { 
+      extraCommission: scenarios.campaign.extraCommission 
     });
 
-    return result;
-  }, [products, searchQuery, sortAsc]);
-
-  const calculateMetrics = (price, cost, channel) => {
-    let totalPct = 0;
-    let totalFixed = 0;
-    channel.fees.forEach(f => {
-      const val = parseFloat(f.value || 0);
-      if (f.type === 'percent') totalPct += val;
-      else totalFixed += val;
+    const flashSalePrice = product.basePrice * (1 - scenarios.flashSale.discount / 100);
+    const flashSale = calculateResult(flashSalePrice, {
+      extraFee: scenarios.flashSale.extraFee
     });
 
-    const feeAmount = (price * (totalPct / 100)) + totalFixed;
-    const netIncome = price - feeAmount;
-    const profit = netIncome - cost;
-    const profitMargin = price > 0 ? (profit / price) * 100 : 0;
+    return { normal, promo, campaign, flashSale };
+  }, [product, fees, scenarios]);
 
-    return { netIncome, profit, profitMargin };
+  // --- Actions ---
+  const handleExport = () => {
+    const data = [
+      ['Scenario', 'Selling Price', 'Cost', 'Profit', 'Margin %'],
+      ['Normal', results.normal.sellingPrice, product.cost, results.normal.profit, results.normal.margin.toFixed(2)],
+      ['Promo', results.promo.sellingPrice, product.cost, results.promo.profit, results.promo.margin.toFixed(2)],
+      ['Campaign', results.campaign.sellingPrice, product.cost, results.campaign.profit, results.campaign.margin.toFixed(2)],
+      ['Flash Sale', results.flashSale.sellingPrice, product.cost, results.flashSale.profit, results.flashSale.margin.toFixed(2)],
+    ];
+    const csvContent = "data:text/csv;charset=utf-8," + data.map(e => e.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Ploypaw_Pricing_${product.name}.csv`);
+    document.body.appendChild(link);
+    link.click();
   };
 
-  const formatNum = (n) => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const getSmartSuggestion = () => {
+    const targetMargin = 30; // อยากได้กำไร 30%
+    const totalFeePercent = (fees.platformFee + fees.paymentFee + fees.commissionFee);
+    const suggested = product.cost / (1 - (totalFeePercent / 100) - (targetMargin / 100));
+    return suggested.toFixed(0);
+  };
 
-  // --- Handlers ---
-  const handleAddChannel = () => setChannels([...channels, { id: `ch-${Date.now()}`, name: 'ช่องทางใหม่', fees: [] }]);
-  const handleRemoveChannel = (id) => setChannels(channels.filter(c => c.id !== id));
-  const handleUpdateChannelName = (id, name) => setChannels(channels.map(c => c.id === id ? { ...c, name } : c));
-  const handleAddFee = (cid) => setChannels(channels.map(c => c.id === cid ? { ...c, fees: [...c.fees, { id: `fee-${Date.now()}`, name: 'ค่าธรรมเนียมใหม่', type: 'percent', value: 0 }] } : c));
-  const handleUpdateFee = (cid, fid, field, val) => setChannels(channels.map(c => c.id === cid ? { ...c, fees: c.fees.map(f => f.id === fid ? { ...f, [field]: val } : f) } : c));
-  const handleRemoveFee = (cid, fid) => setChannels(channels.map(c => c.id === cid ? { ...c, fees: c.fees.filter(f => f.id !== fid) } : c));
+  const formatCurrency = (val) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(val);
 
   return (
-    <div className="min-h-screen bg-pink-50/30 font-sans text-slate-800 pb-20">
-      {/* Header Navigation */}
-      <header className="bg-white sticky top-0 z-30 shadow-sm border-b border-pink-100">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg" style={{ backgroundColor: THEME_COLOR }}>
-              <DollarSign size={22} />
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-10">
+      {/* Header */}
+      <header className="bg-white border-b sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="bg-orange-500 p-2 rounded-lg">
+              <Calculator className="text-white w-6 h-6" />
             </div>
-            <div>
-              <h1 className="text-lg font-bold leading-none" style={{ color: THEME_COLOR }}>Price Analytics</h1>
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-1">E-Commerce Management</p>
-            </div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-800">Ploypaw <span className="text-orange-500">Pricing</span></h1>
           </div>
-          
-          <div className="flex bg-slate-100 p-1 rounded-xl">
-            <button 
-              onClick={() => setActiveTab('dashboard')} 
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'dashboard' ? 'bg-white text-[#F96096] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <LayoutDashboard size={16} />
-              <span className="hidden sm:inline">Dashboard</span>
-            </button>
-            <button 
-              onClick={() => setActiveTab('channels')} 
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'channels' ? 'bg-white text-[#F96096] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              <Settings size={16} />
-              <span className="hidden sm:inline">Settings</span>
-            </button>
-          </div>
+          <button 
+            onClick={handleExport}
+            className="flex items-center gap-2 text-sm font-medium bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-full transition-all"
+          >
+            <Download size={16} /> Export
+          </button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 mt-6">
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Search & Action Bar */}
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-pink-100 flex flex-col lg:flex-row gap-4 items-center justify-between">
-              <div className="relative w-full lg:w-1/3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+      <main className="max-w-5xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left Column: Inputs */}
+        <div className="lg:col-span-4 space-y-6">
+          
+          {/* Product Input Card */}
+          <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <TrendingUp size={20} className="text-orange-500" /> ข้อมูลสินค้า
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase mb-1 block">ชื่อสินค้า</label>
                 <input 
                   type="text" 
-                  placeholder="ค้นหาตามแบรนด์, สินค้า..." 
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-[#F96096] focus:bg-white transition-all text-sm outline-none"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={product.name}
+                  onChange={(e) => setProduct({...product, name: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-orange-200 outline-none transition-all"
                 />
               </div>
-
-              <div className="flex items-center gap-3 w-full lg:w-auto">
-                <div className="flex-1 lg:flex-none flex items-center px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-500">
-                  <span className="mr-2">Total:</span>
-                  <span className="text-[#F96096] font-bold">{processedProducts.length} items</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase mb-1 block">ต้นทุน (฿)</label>
+                  <input 
+                    type="number" 
+                    value={product.cost}
+                    onChange={(e) => setProduct({...product, cost: Number(e.target.value)})}
+                    className="w-full px-3 py-2 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-orange-200 outline-none"
+                  />
                 </div>
-                <button 
-                  onClick={() => fetchSheetData()} 
-                  disabled={isLoading}
-                  className="flex-1 lg:flex-none flex items-center justify-center px-4 py-2.5 bg-white border border-pink-200 text-[#F96096] rounded-xl hover:bg-pink-50 transition-all text-sm font-bold shadow-sm"
-                >
-                  {isLoading ? <Loader2 className="mr-2 animate-spin" size={18} /> : <RefreshCw className="mr-2" size={18} />}
-                  Refresh Data
-                </button>
-                <button 
-                  onClick={() => setSortAsc(!sortAsc)} 
-                  className="flex-1 lg:flex-none flex items-center justify-center px-4 py-2.5 text-white rounded-xl shadow-lg shadow-pink-100 hover:brightness-105 active:scale-95 transition-all text-sm font-bold"
-                  style={{ backgroundColor: THEME_COLOR }}
-                >
-                  <ArrowUpDown className="mr-2" size={18} />
-                  Sort: {sortAsc ? 'A-Z' : 'Z-A'}
-                </button>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase mb-1 block">ราคาขายปกติ (฿)</label>
+                  <input 
+                    type="number" 
+                    value={product.basePrice}
+                    onChange={(e) => setProduct({...product, basePrice: Number(e.target.value)})}
+                    className="w-full px-3 py-2 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-orange-200 outline-none"
+                  />
+                </div>
               </div>
             </div>
+          </section>
 
-            {/* Notification Toast (Inline) */}
-            {importStatus && (
-              <div className={`p-4 rounded-xl flex items-center justify-between text-sm font-medium border ${importStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
-                <div className="flex items-center">
-                  {importStatus.type === 'success' ? <CheckCircle2 size={18} className="mr-2" /> : <AlertCircle size={18} className="mr-2" />}
-                  {importStatus.message}
+          {/* Fee Settings Card */}
+          <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <button 
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              className="w-full flex justify-between items-center text-lg font-bold"
+            >
+              <div className="flex items-center gap-2">
+                <Settings2 size={20} className="text-slate-400" /> ตั้งค่าค่าธรรมเนียม
+              </div>
+              {isSettingsOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </button>
+            
+            {isSettingsOpen && (
+              <div className="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Platform (%)</label>
+                    <input type="number" value={fees.platformFee} onChange={e => setFees({...fees, platformFee: Number(e.target.value)})} className="w-full p-2 bg-slate-50 border rounded-lg text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Payment (%)</label>
+                    <input type="number" value={fees.paymentFee} onChange={e => setFees({...fees, paymentFee: Number(e.target.value)})} className="w-full p-2 bg-slate-50 border rounded-lg text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Commission (%)</label>
+                    <input type="number" value={fees.commissionFee} onChange={e => setFees({...fees, commissionFee: Number(e.target.value)})} className="w-full p-2 bg-slate-50 border rounded-lg text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">อื่นๆ (฿)</label>
+                    <input type="number" value={fees.otherFix} onChange={e => setFees({...fees, otherFix: Number(e.target.value)})} className="w-full p-2 bg-slate-50 border rounded-lg text-sm" />
+                  </div>
                 </div>
-                <button onClick={() => setImportStatus(null)} className="text-current opacity-50 hover:opacity-100">&times;</button>
               </div>
             )}
+          </section>
 
-            {/* Main Table Container */}
-            <div className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-separate border-spacing-0">
-                  <thead>
-                    <tr className="bg-slate-50">
-                      <th colSpan="4" className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] border-b border-r border-slate-100">Product Info</th>
-                      <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] border-b border-r border-slate-100">Pricing</th>
-                      {channels.map(c => (
-                        <th key={c.id} colSpan="3" className="px-6 py-4 text-center text-[10px] font-bold uppercase tracking-[0.1em] border-b border-r last:border-r-0 border-pink-100 bg-pink-50/30" style={{ color: THEME_COLOR }}>
-                          {c.name} Performance
-                        </th>
-                      ))}
-                    </tr>
-                    <tr className="bg-white border-b border-slate-50 text-[10px] text-slate-400 uppercase font-bold sticky top-0 shadow-sm">
-                      <th className="px-6 py-3 border-b border-slate-50">Brand</th>
-                      <th className="px-6 py-3 border-b border-slate-50">Name</th>
-                      <th className="px-6 py-3 border-b border-slate-50">Option (SKU)</th>
-                      <th className="px-6 py-3 border-b border-r border-slate-50">Size</th>
-                      <th className="px-6 py-3 text-right border-b border-r border-slate-50">Cost | Sale</th>
-                      {channels.map(c => (
-                        <React.Fragment key={`sub-${c.id}`}>
-                          <th className="px-4 py-3 text-right border-b border-slate-50 bg-pink-50/10">Net Income</th>
-                          <th className="px-4 py-3 text-right border-b border-slate-50 bg-pink-50/10">Profit (฿)</th>
-                          <th className="px-4 py-3 text-right border-b border-r last:border-r-0 border-slate-50 bg-pink-50/10">Margin (%)</th>
-                        </React.Fragment>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {isLoading ? (
-                      <tr>
-                        <td colSpan="100%" className="px-6 py-20 text-center">
-                          <Loader2 className="mx-auto animate-spin text-pink-300 mb-3" size={40} />
-                          <p className="text-slate-400 font-medium animate-pulse">กำลังซิงค์ข้อมูลจากคลาวด์...</p>
-                        </td>
-                      </tr>
-                    ) : processedProducts.length === 0 ? (
-                      <tr>
-                        <td colSpan="100%" className="px-6 py-20 text-center">
-                          <div className="max-w-xs mx-auto text-slate-400">
-                            <AlertCircle className="mx-auto mb-3 opacity-20" size={48} />
-                            <p className="font-semibold">ไม่พบข้อมูลที่ค้นหา</p>
-                            <p className="text-xs mt-1">ลองใช้คำค้นหาอื่น หรือกด Refresh เพื่ออัปเดตข้อมูล</p>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      processedProducts.map(p => (
-                        <tr key={p.id} className="group hover:bg-slate-50/80 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-700">{p.brand}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 max-w-[180px] truncate" title={p.name}>{p.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-400 font-mono bg-slate-50/50">{p.option}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500 border-r border-slate-50">{p.size}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right border-r border-slate-50">
-                            <div className="text-[10px] font-bold text-slate-300">C: {formatNum(p.cost)}</div>
-                            <div className="text-sm font-black text-slate-800 tracking-tight">{formatNum(p.price)}</div>
-                          </td>
-                          {channels.map(c => {
-                            const { netIncome, profit, profitMargin } = calculateMetrics(p.price, p.cost, c);
-                            const isLoss = profit < 0;
-                            return (
-                              <React.Fragment key={`cell-${p.id}-${c.id}`}>
-                                <td className="px-4 py-4 text-right text-sm font-bold text-blue-600/80">{formatNum(netIncome)}</td>
-                                <td className={`px-4 py-4 text-right text-sm font-bold ${isLoss ? 'text-rose-500' : 'text-emerald-600'}`}>
-                                  {formatNum(profit)}
-                                </td>
-                                <td className={`px-4 py-4 text-right text-xs font-black border-r last:border-r-0 border-slate-50 ${isLoss ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-700'}`}>
-                                  {profitMargin.toFixed(1)}%
-                                </td>
-                              </React.Fragment>
-                            );
-                          })}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+          {/* AI Suggestion */}
+          <div className="bg-orange-50 border border-orange-100 p-4 rounded-2xl flex gap-3">
+            <Lightbulb className="text-orange-500 shrink-0" />
+            <div>
+              <p className="text-xs text-orange-800 font-medium">คำแนะนำจาก AI Suggest</p>
+              <p className="text-sm text-orange-950">
+                เพื่อให้ได้ Margin 30% ควรตั้งราคาขายที่ <span className="font-bold">{formatCurrency(getSmartSuggestion())}</span>
+              </p>
             </div>
-          </div>
-        )}
-
-        {activeTab === 'channels' && (
-          <div className="max-w-3xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-pink-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-800">Channel Settings</h2>
-                <p className="text-xs text-slate-400 mt-1 italic">* ข้อมูลจะถูกบันทึกไว้ใน Browser ของคุณอัตโนมัติ</p>
-              </div>
-              <button 
-                onClick={handleAddChannel} 
-                className="flex items-center px-4 py-2.5 text-white font-bold rounded-xl shadow-lg hover:brightness-105 active:scale-95 transition-all text-sm" 
-                style={{ backgroundColor: THEME_COLOR }}
-              >
-                <Plus size={18} className="mr-1.5" /> เพิ่มช่องทาง
-              </button>
-            </div>
-
-            <div className="grid gap-6">
-              {channels.map((c, idx) => (
-                <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden group">
-                  <div className="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-100">
-                    <div className="flex items-center gap-4 flex-1">
-                      <span className="w-8 h-8 rounded-lg bg-white border border-pink-200 flex items-center justify-center font-bold text-xs shadow-sm" style={{ color: THEME_COLOR }}>{idx + 1}</span>
-                      <input 
-                        type="text" 
-                        value={c.name} 
-                        onChange={(e) => handleUpdateChannelName(c.id, e.target.value)}
-                        className="bg-transparent font-bold border-none focus:ring-0 p-0 text-slate-700 text-lg w-full max-w-sm"
-                        placeholder="ชื่อช่องทางการขาย..."
-                      />
-                    </div>
-                    <button onClick={() => handleRemoveChannel(c.id)} className="text-slate-300 hover:text-rose-500 transition-colors">
-                      <Trash2 size={20} />
-                    </button>
-                  </div>
-                  
-                  <div className="p-6 space-y-4">
-                    {c.fees.length === 0 && (
-                      <p className="text-center text-xs text-slate-400 py-4 italic">ยังไม่มีค่าธรรมเนียมสำหรับช่องทางนี้</p>
-                    )}
-                    
-                    {c.fees.map(f => (
-                      <div key={f.id} className="flex flex-col sm:flex-row gap-4 items-center bg-slate-50/50 p-3.5 rounded-xl border border-slate-100/50 hover:border-pink-200 transition-all">
-                        <input 
-                          type="text" 
-                          value={f.name} 
-                          onChange={(e) => handleUpdateFee(c.id, f.id, 'name', e.target.value)}
-                          placeholder="ชื่อค่าธรรมเนียม (เช่น ค่า GP, ภาษี)" 
-                          className="flex-1 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#F96096] focus:border-[#F96096] px-3 py-2 outline-none"
-                        />
-                        <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
-                          <button onClick={() => handleUpdateFee(c.id, f.id, 'type', 'percent')} className={`px-4 py-1.5 text-xs font-black rounded-md transition-all ${f.type === 'percent' ? 'bg-[#F96096] text-white shadow-md' : 'text-slate-400'}`}>%</button>
-                          <button onClick={() => handleUpdateFee(c.id, f.id, 'type', 'fixed')} className={`px-4 py-1.5 text-xs font-black rounded-md transition-all ${f.type === 'fixed' ? 'bg-[#F96096] text-white shadow-md' : 'text-slate-400'}`}>฿</button>
-                        </div>
-                        <div className="w-full sm:w-32">
-                          <input 
-                            type="number" 
-                            value={f.value} 
-                            onChange={(e) => handleUpdateFee(c.id, f.id, 'value', e.target.value)}
-                            className="w-full text-right text-sm font-bold border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#F96096] px-3 py-2 outline-none bg-white"
-                          />
-                        </div>
-                        <button onClick={() => handleRemoveFee(c.id, f.id)} className="text-slate-200 hover:text-rose-500">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    ))}
-                    
-                    <button 
-                      onClick={() => handleAddFee(c.id)} 
-                      className="w-full py-3.5 border-2 border-dashed border-pink-100 rounded-2xl text-pink-300 hover:border-pink-300 hover:text-pink-400 hover:bg-pink-50/50 transition-all text-xs font-bold flex items-center justify-center"
-                    >
-                      <Plus size={16} className="mr-1.5" /> Add Fee Option
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* GitHub Style Footer */}
-            <div className="pt-10 border-t border-pink-100 flex flex-col items-center text-center">
-              <div className="flex items-center space-x-2 text-slate-400 text-xs font-medium">
-                <FileSpreadsheet size={14} />
-                <span>Connected to Google Sheet</span>
-              </div>
-              <a 
-                href={DEFAULT_SHEET_URL} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="mt-2 text-[10px] text-[#F96096] hover:underline flex items-center"
-              >
-                View Data Source <ExternalLink size={10} className="ml-1" />
-              </a>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Persistent App Footer */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-pink-100 py-3 px-4 z-40">
-        <div className="max-w-7xl mx-auto flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-          <div>© 2024 E-Com Pricing Tool</div>
-          <div className="flex items-center">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></div>
-            System Online
           </div>
         </div>
-      </footer>
+
+        {/* Right Column: Scenarios & Results */}
+        <div className="lg:col-span-8 space-y-6">
+          
+          {/* Main Results Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Scenario A: Normal */}
+            <ResultCard 
+              title="A: ราคาปกติ" 
+              data={results.normal} 
+              color="blue"
+              footer="คำนวณจากราคาตั้งต้น ไม่หักส่วนลด"
+            />
+
+            {/* Scenario B: Promo */}
+            <ResultCard 
+              title="B: โปรโมชันร้าน" 
+              data={results.promo} 
+              color="green"
+              config={
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>ส่วนลดหน้าร้าน: {scenarios.promo.discount}%</span>
+                  </div>
+                  <input 
+                    type="range" min="0" max="50" step="1"
+                    value={scenarios.promo.discount}
+                    onChange={(e) => setScenarios({
+                      ...scenarios, 
+                      promo: { ...scenarios.promo, discount: Number(e.target.value) }
+                    })}
+                    className="w-full accent-green-500"
+                  />
+                </div>
+              }
+            />
+
+            {/* Scenario C: Campaign */}
+            <ResultCard 
+              title="C: แคมเปญใหญ่" 
+              data={results.campaign} 
+              color="purple"
+              config={
+                <div className="mt-3 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span>ร้านช่วยออกส่วนลด (%):</span>
+                    <input 
+                      type="number" value={scenarios.campaign.sellerShare}
+                      onChange={(e) => setScenarios({
+                        ...scenarios,
+                        campaign: { ...scenarios.campaign, sellerShare: Number(e.target.value) }
+                      })}
+                      className="w-12 border rounded px-1"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span>ค่าคอมฯ พิเศษ (%):</span>
+                    <input 
+                      type="number" value={scenarios.campaign.extraCommission}
+                      onChange={(e) => setScenarios({
+                        ...scenarios,
+                        campaign: { ...scenarios.campaign, extraCommission: Number(e.target.value) }
+                      })}
+                      className="w-12 border rounded px-1"
+                    />
+                  </div>
+                </div>
+              }
+            />
+
+            {/* Scenario D: Flash Sale */}
+            <ResultCard 
+              title="D: Flash Sale" 
+              data={results.flashSale} 
+              color="orange"
+              config={
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>ลดหนักมาก: {scenarios.flashSale.discount}%</span>
+                  </div>
+                  <input 
+                    type="range" min="0" max="80" step="1"
+                    value={scenarios.flashSale.discount}
+                    onChange={(e) => setScenarios({
+                      ...scenarios, 
+                      flashSale: { ...scenarios.flashSale, discount: Number(e.target.value) }
+                    })}
+                    className="w-full accent-orange-500"
+                  />
+                </div>
+              }
+            />
+          </div>
+
+          {/* Comparison Table */}
+          <section className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="p-4 border-b">
+              <h3 className="font-bold flex items-center gap-2">
+                <AlertCircle size={18} className="text-slate-400" /> ตารางเปรียบเทียบกำไรสุทธิ
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-500 text-left">
+                  <tr>
+                    <th className="p-4 font-semibold">Scenario</th>
+                    <th className="p-4 font-semibold text-right">ราคาขาย</th>
+                    <th className="p-4 font-semibold text-right">กำไร</th>
+                    <th className="p-4 font-semibold text-right">Margin %</th>
+                    <th className="p-4 font-semibold">สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {Object.entries(results).map(([key, res]) => (
+                    <tr key={key} className="hover:bg-slate-50">
+                      <td className="p-4 font-medium capitalize">{key === 'normal' ? 'ปกติ' : key === 'promo' ? 'โปรโมชัน' : key === 'campaign' ? 'แคมเปญ' : 'Flash Sale'}</td>
+                      <td className="p-4 text-right">{formatCurrency(res.sellingPrice)}</td>
+                      <td className={`p-4 text-right font-bold ${res.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(res.profit)}
+                      </td>
+                      <td className="p-4 text-right">{res.margin.toFixed(1)}%</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${res.profit > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {res.profit > 0 ? 'กำไร' : 'ขาดทุน'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Break-even Info */}
+          <div className="p-4 bg-slate-800 text-white rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <p className="text-slate-400 text-sm">จุดคุ้มทุน (Break-even Price) สำหรับราคาสินค้านี้:</p>
+              <h4 className="text-2xl font-bold">{formatCurrency(results.normal.breakEven)}</h4>
+            </div>
+            <p className="text-xs text-slate-400 max-w-xs md:text-right">
+              *คือราคาขั้นต่ำที่คุณต้องตั้งขายเพื่อไม่ให้ขาดทุน (รวมค่าธรรมเนียมทั้งหมดแล้ว)
+            </p>
+          </div>
+
+        </div>
+      </main>
     </div>
   );
-}
+};
+
+const ResultCard = ({ title, data, color, config, footer }) => {
+  const colorMap = {
+    blue: 'border-blue-200 bg-blue-50/30 text-blue-700',
+    green: 'border-green-200 bg-green-50/30 text-green-700',
+    purple: 'border-purple-200 bg-purple-50/30 text-purple-700',
+    orange: 'border-orange-200 bg-orange-50/30 text-orange-700',
+  };
+
+  const isProfit = data.profit >= 0;
+
+  return (
+    <div className={`p-5 rounded-2xl border bg-white shadow-sm flex flex-col justify-between transition-all hover:shadow-md`}>
+      <div>
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="font-bold text-slate-700">{title}</h3>
+          <span className={`text-[10px] font-black py-1 px-2 rounded uppercase ${colorMap[color]}`}>
+            {isProfit ? 'Profit' : 'Loss'}
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex justify-between items-end">
+            <span className="text-xs text-slate-500">ราคาขายจริง</span>
+            <span className="text-xl font-bold">{new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(data.sellingPrice)}</span>
+          </div>
+          
+          <div className="flex justify-between text-xs text-slate-600">
+            <span>ค่าธรรมเนียมรวม</span>
+            <span>-{new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(data.feeAmount)}</span>
+          </div>
+
+          <div className="h-px bg-slate-100" />
+
+          <div className="flex justify-between items-end">
+            <span className="text-xs font-semibold text-slate-500 uppercase">กำไรสุทธิ</span>
+            <div className="text-right">
+              <span className={`text-2xl font-black ${isProfit ? 'text-green-600' : 'text-red-600'}`}>
+                {new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(data.profit)}
+              </span>
+              <p className={`text-[10px] font-bold ${isProfit ? 'text-green-500' : 'text-red-500'}`}>
+                ({data.margin.toFixed(1)}% Margin)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {config && <div className="mt-4 pt-4 border-t border-dashed">{config}</div>}
+      </div>
+      
+      {footer && <p className="mt-4 text-[10px] text-slate-400 italic">{footer}</p>}
+    </div>
+  );
+};
+
+export default App;
