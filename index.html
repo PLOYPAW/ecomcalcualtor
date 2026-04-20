@@ -1,494 +1,415 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  Save, 
-  Search, 
-  Settings, 
-  LayoutDashboard, 
-  ChevronDown, 
-  ChevronUp,
-  RefreshCcw,
-  ArrowRightLeft,
-  DollarSign,
-  TrendingUp,
-  AlertCircle,
-  ExternalLink
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เครื่องมือคำนวณค่าธรรมเนียมการขายออนไลน์ - Ploypaw</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Kanit', sans-serif; 
+            background-color: #f8fafc;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden; 
+        }
 
-/**
- * CONFIGURATION
- * นำ URL ที่ได้จาก Google Apps Script (ตอน Deploy เป็น Web App) มาใส่ที่นี่
- */
-const API_URL = "https://script.google.com/macros/s/AKfycbwTurSXHkuXlpFYxwwDNgnATWnFtdTTIC8gxMC4w6Rpta2nF6s_SWqk8dDS0WrT3MeYJA/exec"; 
+        header {
+            background-color: #f96096;
+            background-image: linear-gradient(135deg, #fb89b2 0%, #f96096 100%);
+            width: 100%;
+            padding: 3rem 1.5rem 6rem 1.5rem;
+            text-align: center;
+            border-bottom-left-radius: 3rem;
+            border-bottom-right-radius: 3rem;
+            box-shadow: 0 10px 30px rgba(249, 96, 150, 0.15);
+            position: relative;
+        }
 
-// --- UTILS: CALCULATION ENGINE ---
-const calculateNet = ({
-  sellPrice,
-  cost,
-  feePercent = 0,
-  commission = 0,
-  vat = 0,
-  fixedFee = 0,
-  campaignFee = 0
-}) => {
-  const price = parseFloat(sellPrice) || 0;
-  const itemCost = parseFloat(cost) || 0;
-  
-  // คำนวณค่าธรรมเนียมต่างๆ
-  const feeAmt = (price * (parseFloat(feePercent) / 100));
-  const commAmt = (price * (parseFloat(commission) / 100));
-  const campAmt = (price * (parseFloat(campaignFee) / 100));
-  const vatAmt = (price * (parseFloat(vat) / 100));
-  
-  const totalFees = feeAmt + commAmt + campAmt + vatAmt + parseFloat(fixedFee);
-  const net = price - totalFees;
-  const profit = net - itemCost;
-  const margin = price > 0 ? (profit / price) * 100 : 0;
+        .header-logo {
+            @apply h-24 md:h-40 w-auto mx-auto object-contain transition-transform duration-500 drop-shadow-xl;
+        }
 
-  return {
-    net: net.toFixed(2),
-    profit: profit.toFixed(2),
-    margin: margin.toFixed(2),
-    totalFees: totalFees.toFixed(2)
-  };
-};
+        .main-container {
+            @apply max-w-6xl mx-auto w-full px-4 sm:px-6 -mt-8 pb-20;
+            position: relative;
+            z-index: 20;
+        }
 
-// --- COMPONENTS: UI ELEMENTS ---
+        .main-card {
+            @apply bg-white rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl shadow-gray-200/50 overflow-hidden border border-gray-100;
+        }
 
-const Card = ({ children, className = "" }) => (
-  <div className={`bg-[#1a1a1a] border border-white/5 rounded-2xl shadow-xl overflow-hidden ${className}`}>
-    {children}
-  </div>
-);
+        .content-area {
+            @apply p-6 md:p-10 lg:p-12;
+        }
 
-const Button = ({ children, onClick, variant = "primary", className = "", disabled = false }) => {
-  const base = "px-4 py-2 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50";
-  const themes = {
-    primary: "bg-[#ff4da6] hover:bg-[#ff7ebc] text-white shadow-lg shadow-pink-500/20",
-    secondary: "bg-white/10 hover:bg-white/20 text-white",
-    danger: "bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20",
-    ghost: "bg-transparent hover:bg-white/5 text-gray-400 hover:text-white"
-  };
-  return (
-    <button disabled={disabled} onClick={onClick} className={`${base} ${themes[variant]} ${className}`}>
-      {children}
-    </button>
-  );
-};
+        input[type="number"], select { 
+            @apply w-full p-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-[#f96096]/10 focus:border-[#f96096] outline-none transition-all bg-gray-50 text-base; 
+        }
 
-const Input = ({ label, value, onChange, type = "text", placeholder = "", suffix = "" }) => (
-  <div className="flex flex-col gap-1.5 w-full">
-    {label && <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</label>}
-    <div className="relative">
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-[#ff4da6]/50 transition-all"
-      />
-      {suffix && <span className="absolute right-4 top-2.5 text-gray-500">{suffix}</span>}
-    </div>
-  </div>
-);
+        .input-label {
+            @apply block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider ml-1;
+        }
 
-// --- MAIN APP COMPONENT ---
+        /* Result Card - Adjusted to Light Theme with Dark Text */
+        .result-card {
+            @apply bg-gray-50 rounded-[2rem] p-6 md:p-8 text-gray-800 border border-gray-200 shadow-inner flex flex-col justify-center;
+        }
 
-export default function App() {
-  const [view, setView] = useState('dashboard');
-  const [loading, setLoading] = useState(false);
-  const [products, setProducts] = useState([]);
-  const [fees, setFees] = useState([]);
-  const [search, setSearch] = useState('');
-  const [editingProduct, setEditingProduct] = useState(null);
+        .btn-action {
+            @apply w-full flex items-center justify-center px-8 py-4 bg-[#f96096] text-white rounded-2xl hover:bg-[#d84d7d] transition-all font-bold shadow-lg active:scale-95;
+        }
 
-  // Load Data พร้อมตรวจสอบ API_URL
-  const fetchData = async () => {
-    if (!API_URL || API_URL.trim() === "") {
-      console.warn("API_URL is not defined. Data fetching skipped.");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const prodRes = await fetch(`${API_URL}?action=getProducts`);
-      const feeRes = await fetch(`${API_URL}?action=getFees`);
-      
-      if (!prodRes.ok || !feeRes.ok) throw new Error("Network response was not ok");
-      
-      const prodData = await prodRes.json();
-      const feeData = await feeRes.json();
-      setProducts(Array.isArray(prodData) ? prodData : []);
-      setFees(Array.isArray(feeData) ? feeData : []);
-    } catch (err) {
-      console.error("Fetch Error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        .fee-row {
+            @apply flex justify-between text-sm text-gray-500 border-b border-gray-200 py-2 last:border-0;
+        }
 
-  useEffect(() => { 
-    if (API_URL) fetchData(); 
-  }, []);
+        /* Toggle Switch Styling */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #e2e8f0;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #f96096; }
+        input:checked + .slider:before { transform: translateX(20px); }
 
-  const handleSaveProduct = async (product) => {
-    if (!API_URL) return;
-    setLoading(true);
-    try {
-      await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'saveProduct', payload: product })
-      });
-      await fetchData();
-      setView('dashboard');
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-up { animation: slideUp 0.6s ease-out forwards; }
+    </style>
+</head>
+<body>
 
-  const handleDeleteProduct = async (sku) => {
-    if (!API_URL) return;
-    if (!window.confirm(`ลบสินค้า SKU: ${sku}?`)) return;
-    setLoading(true);
-    try {
-      await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'deleteProduct', sku })
-      });
-      await fetchData();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredProducts = useMemo(() => {
-    return products.filter(p => 
-      p.SKU?.toString().toLowerCase().includes(search.toLowerCase()) || 
-      p.Name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.Brand?.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [products, search]);
-
-  const brands = [...new Set(products.map(p => p.Brand))].filter(Boolean);
-
-  // Error State UI หากไม่ได้ใส่ API_URL
-  if (!API_URL || API_URL === "") {
-    return (
-      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center p-4">
-        <Card className="max-w-md w-full p-8 text-center border-yellow-500/20">
-          <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertCircle className="text-yellow-500" size={32} />
-          </div>
-          <h2 className="text-2xl font-bold mb-2">ยังไม่ได้ตั้งค่า API URL</h2>
-          <p className="text-gray-400 mb-8 text-sm">
-            กรุณานำ Web App URL ที่ได้จากการ Deploy Google Apps Script มาใส่ในตัวแปร <code className="text-pink-400">API_URL</code> ที่บรรทัดที่ 18 ของไฟล์ App.jsx
-          </p>
-          <div className="space-y-3">
-             <div className="p-4 bg-white/5 rounded-xl text-left text-xs font-mono break-all text-gray-500 border border-white/5">
-                const API_URL = "https://script.google.com/macros/s/.../exec";
-             </div>
-             <Button className="w-full" onClick={() => window.location.reload()}>
-               <RefreshCcw size={16} /> ตรวจสอบอีกครั้ง
-             </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#0f0f0f] text-white font-sans selection:bg-[#ff4da6]/30">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#0f0f0f]/80 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#ff4da6] rounded-xl flex items-center justify-center shadow-lg shadow-pink-500/20">
-              <TrendingUp size={24} className="text-white" />
+    <header>
+        <div class="animate-up">
+            <img src="https://cdn.shopify.com/s/files/1/0839/1278/6208/files/offi.png?v=1773728815" 
+                 alt="ploypaw logo" 
+                 class="header-logo">
+            <div class="mt-4 space-y-1">
+                <h1 class="text-white text-lg font-semibold tracking-wide">เครื่องมือคำนวณค่าธรรมเนียม</h1>
+                <p class="text-white/70 text-[10px] uppercase tracking-[0.3em]">Smart Seller Tools by Ploypaw</p>
             </div>
-            <div className="hidden sm:block">
-              <h1 className="font-bold text-lg leading-tight">PriceMaster</h1>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Multi-Platform Pro</p>
-            </div>
-          </div>
-          
-          <nav className="flex items-center gap-2">
-            <Button 
-              variant={view === 'dashboard' ? 'primary' : 'ghost'} 
-              onClick={() => setView('dashboard')}
-            >
-              <LayoutDashboard size={18} />
-              <span className="hidden md:inline">Dashboard</span>
-            </Button>
-            <Button 
-              variant={view === 'settings' ? 'primary' : 'ghost'} 
-              onClick={() => setView('settings')}
-            >
-              <Settings size={18} />
-              <span className="hidden md:inline">Settings</span>
-            </Button>
-            <Button 
-              variant="secondary"
-              onClick={() => {
-                setEditingProduct({
-                  Brand: '', SKU: '', Name: '', CostPrice: 0, SuggestedPrice: 0,
-                  SellPrice_TikTok: 0, SellPrice_Shopee: 0, SellPrice_Lazada: 0, SellPrice_Other: 0
-                });
-                setView('form');
-              }}
-            >
-              <Plus size={18} />
-              <span className="hidden md:inline">Add Product</span>
-            </Button>
-          </nav>
         </div>
-      </header>
+    </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {view === 'dashboard' && (
-          <div className="space-y-6">
-            {/* Search & Stats */}
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div className="relative w-full md:w-96">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                <input 
-                  type="text"
-                  placeholder="Search SKU, Name or Brand..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-white focus:ring-2 focus:ring-[#ff4da6]/50 outline-none transition-all"
-                />
-              </div>
-              <div className="flex gap-4 w-full md:w-auto">
-                <Card className="flex-1 md:w-40 px-4 py-2 flex flex-col items-center justify-center border-pink-500/20">
-                   <span className="text-xs text-gray-500 font-bold uppercase tracking-tighter">Products</span>
-                   <span className="text-xl font-bold text-[#ff4da6]">{products.length}</span>
-                </Card>
-                <Card className="flex-1 md:w-40 px-4 py-2 flex flex-col items-center justify-center">
-                   <span className="text-xs text-gray-500 font-bold uppercase tracking-tighter">Brands</span>
-                   <span className="text-xl font-bold">{brands.length}</span>
-                </Card>
-                <button onClick={fetchData} className="p-3 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
-                   <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
-                </button>
-              </div>
-            </div>
+    <main class="main-container animate-up" style="animation-delay: 0.2s;">
+        <div class="main-card">
+            <div class="content-area">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12">
+                    
+                    <div class="lg:col-span-4 space-y-6">
+                        <div class="bg-gray-50/50 p-6 rounded-3xl border border-gray-100">
+                            <h2 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                                <span class="w-8 h-8 bg-pink-100 text-[#f96096] rounded-lg flex items-center justify-center mr-3">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+                                </span>
+                                ตั้งค่าแพลตฟอร์ม
+                            </h2>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="input-label">แอพพลิเคชั่น</label>
+                                    <select id="platformSelect" onchange="loadPlatformSettings()">
+                                        <option value="Shopee">Shopee</option>
+                                        <option value="TikTok Shop">TikTok Shop</option>
+                                        <option value="Lazada">Lazada</option>
+                                        <option value="Custom">ปรับแต่งเอง</option>
+                                    </select>
+                                </div>
+                                
+                                <div id="feeSettings" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 pt-4 border-t border-gray-100">
+                                    <!-- Dynamic Inputs -->
+                                </div>
 
-            {/* Product List */}
-            <div className="grid grid-cols-1 gap-6">
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map(product => (
-                  <ProductRow 
-                    key={product.SKU} 
-                    product={product} 
-                    fees={fees} 
-                    onEdit={(p) => { setEditingProduct(p); setView('form'); }}
-                    onDelete={handleDeleteProduct}
-                  />
-                ))
-              ) : (
-                <div className="py-20 text-center text-gray-500 bg-[#1a1a1a] rounded-3xl border border-dashed border-white/10">
-                  {loading ? <RefreshCcw className="animate-spin mx-auto mb-4" /> : <Search className="mx-auto mb-4 opacity-20" size={48} />}
-                  <p>{loading ? 'Syncing with Google Sheets...' : 'ไม่พบข้อมูลสินค้า'}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {view === 'form' && (
-          <ProductForm 
-            initialData={editingProduct} 
-            onSave={handleSaveProduct} 
-            onCancel={() => setView('dashboard')}
-            loading={loading}
-          />
-        )}
-
-        {view === 'settings' && (
-          <SettingsPage 
-            fees={fees} 
-            onSave={async (newFees) => {
-              setLoading(true);
-              try {
-                await fetch(API_URL, {
-                  method: 'POST',
-                  body: JSON.stringify({ action: 'updateFees', payload: newFees })
-                });
-                await fetchData();
-                setView('dashboard');
-              } catch(err) { console.error(err); }
-              finally { setLoading(false); }
-            }}
-            onCancel={() => setView('dashboard')}
-          />
-        )}
-      </main>
-    </div>
-  );
-}
-
-function ProductRow({ product, fees, onEdit, onDelete }) {
-  return (
-    <Card className="hover:border-[#ff4da6]/30 transition-all group">
-      <div className="p-4 sm:p-6">
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="lg:w-1/3 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-black bg-[#ff4da6]/10 text-[#ff4da6] px-2 py-0.5 rounded uppercase tracking-widest">
-                  {product.Brand || 'NO BRAND'}
-                </span>
-                <span className="text-[10px] text-gray-500 font-mono tracking-tighter">{product.SKU}</span>
-              </div>
-              <h3 className="text-xl font-bold text-white group-hover:text-[#ff4da6] transition-colors">{product.Name}</h3>
-              <div className="mt-4 flex items-baseline gap-2">
-                <span className="text-xs text-gray-500 font-semibold uppercase">ทุน:</span>
-                <span className="text-lg font-mono font-bold text-white">฿{parseFloat(product.CostPrice || 0).toLocaleString()}</span>
-              </div>
-            </div>
-            
-            <div className="mt-6 flex gap-2">
-              <Button variant="ghost" className="flex-1 bg-white/5" onClick={() => onEdit(product)}>แก้ไขข้อมูล</Button>
-              <Button variant="danger" className="w-12 px-0" onClick={() => onDelete(product.SKU)}><Trash2 size={16} /></Button>
-            </div>
-          </div>
-
-          <div className="lg:w-2/3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-            {['TikTok', 'Shopee', 'Lazada', 'Other'].map(plat => {
-              const platformFee = fees.find(f => f.Platform === plat) || {};
-              const sellPrice = product[`SellPrice_${plat}`] || 0;
-              const result = calculateNet({
-                sellPrice,
-                cost: product.CostPrice,
-                ...platformFee
-              });
-              
-              const isProfit = parseFloat(result.profit) > 0;
-
-              return (
-                <div key={plat} className="bg-white/5 border border-white/5 p-4 rounded-2xl flex flex-col justify-between hover:bg-white/[0.07] transition-all">
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{plat}</span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isProfit ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
-                      {result.margin}%
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5">ราคาขาย</p>
-                    <p className="text-xl font-mono font-black text-white">฿{parseFloat(sellPrice).toLocaleString()}</p>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-white/5 flex justify-between items-end">
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase">กำไรสุทธิ</p>
-                      <p className={`text-sm font-bold ${isProfit ? 'text-emerald-400' : 'text-red-400'}`}>
-                        ฿{parseFloat(result.profit).toLocaleString()}
-                      </p>
+                                <button onclick="saveSettings()" class="w-full py-4 text-[#f96096] bg-white border-2 border-[#f96096] rounded-2xl hover:bg-pink-50 transition-all font-bold mt-4">
+                                    บันทึกค่าพื้นฐาน
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <p className="text-[10px] text-gray-600 font-mono">Fee ฿{result.totalFees}</p>
-                  </div>
+
+                    <div class="lg:col-span-8 space-y-8">
+                        <div id="itemsContainer" class="space-y-8">
+                            <!-- Items will be injected here -->
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                            <button onclick="addItem()" id="addItemBtn" class="btn-action flex-1">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                เพิ่มรายการสินค้า
+                            </button>
+                            <div class="flex items-center justify-center bg-gray-100 px-6 py-4 rounded-2xl text-gray-500 font-bold text-sm" id="itemCounter">
+                                รายการ 1 / 5
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function ProductForm({ initialData, onSave, onCancel, loading }) {
-  const [formData, setFormData] = useState(initialData);
-
-  const handleChange = (field, val) => {
-    setFormData(prev => ({ ...prev, [field]: val }));
-  };
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      <Card>
-        <div className="p-6 border-b border-white/5 flex justify-between items-center">
-          <h2 className="text-xl font-bold">{formData.SKU ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่'}</h2>
-          <Button variant="ghost" onClick={onCancel}>ยกเลิก</Button>
-        </div>
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <h3 className="text-sm font-bold text-[#ff4da6] uppercase tracking-widest border-l-2 border-[#ff4da6] pl-3">ข้อมูลทั่วไป</h3>
-            <Input label="แบรนด์" value={formData.Brand} onChange={v => handleChange('Brand', v)} />
-            <Input label="SKU (ห้ามซ้ำ)" value={formData.SKU} onChange={v => handleChange('SKU', v)} disabled={!!initialData.SKU} />
-            <Input label="ชื่อสินค้า" value={formData.Name} onChange={v => handleChange('Name', v)} />
-            <Input label="ราคาทุน" type="number" value={formData.CostPrice} onChange={v => handleChange('CostPrice', v)} suffix="฿" />
-          </div>
-          <div className="space-y-6">
-            <h3 className="text-sm font-bold text-[#ff4da6] uppercase tracking-widest border-l-2 border-[#ff4da6] pl-3">ราคาขายแยกแพลตฟอร์ม</h3>
-            <Input label="TikTok Shop" type="number" value={formData.SellPrice_TikTok} onChange={v => handleChange('SellPrice_TikTok', v)} suffix="฿" />
-            <Input label="Shopee" type="number" value={formData.SellPrice_Shopee} onChange={v => handleChange('SellPrice_Shopee', v)} suffix="฿" />
-            <Input label="Lazada" type="number" value={formData.SellPrice_Lazada} onChange={v => handleChange('SellPrice_Lazada', v)} suffix="฿" />
-            <Input label="ช่องทางอื่นๆ" type="number" value={formData.SellPrice_Other} onChange={v => handleChange('SellPrice_Other', v)} suffix="฿" />
-          </div>
-        </div>
-        <div className="p-6 bg-white/5 flex justify-end gap-3">
-          <Button variant="ghost" onClick={onCancel}>ยกเลิก</Button>
-          <Button onClick={() => onSave(formData)} disabled={loading}>
-            {loading ? <RefreshCcw className="animate-spin" size={18} /> : <Save size={18} />}
-            บันทึกข้อมูล
-          </Button>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function SettingsPage({ fees, onSave, onCancel }) {
-  const [localFees, setLocalFees] = useState(fees.length > 0 ? fees : [
-    { Platform: 'TikTok', FeePercent: 3, Commission: 4, VAT: 7, FixedFee: 0, CampaignFee: 0 },
-    { Platform: 'Shopee', FeePercent: 3, Commission: 5, VAT: 7, FixedFee: 0, CampaignFee: 0 },
-    { Platform: 'Lazada', FeePercent: 3, Commission: 4, VAT: 7, FixedFee: 0, CampaignFee: 0 },
-    { Platform: 'Other', FeePercent: 0, Commission: 0, VAT: 0, FixedFee: 0, CampaignFee: 0 },
-  ]);
-
-  const updateFeeRow = (idx, field, val) => {
-    const next = [...localFees];
-    next[idx][field] = val;
-    setLocalFees(next);
-  };
-
-  return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-2xl font-bold">ตั้งค่าแพลตฟอร์ม</h2>
-          <p className="text-gray-500">กำหนดค่าธรรมเนียมกลางเพื่อการคำนวณกำไรที่แม่นยำ</p>
-        </div>
-        <div className="flex gap-2">
-           <Button variant="ghost" onClick={onCancel}>ละทิ้ง</Button>
-           <Button onClick={() => onSave(localFees)}>บันทึกการตั้งค่า</Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4">
-        {localFees.map((fee, idx) => (
-          <Card key={fee.Platform} className="p-6">
-            <div className="flex flex-col md:flex-row gap-6 items-center">
-              <div className="md:w-32 flex flex-col items-center justify-center p-4 bg-white/5 rounded-2xl border border-white/5">
-                <p className="text-xs text-gray-500 font-bold uppercase mb-1">Platform</p>
-                <p className="text-xl font-bold text-[#ff4da6]">{fee.Platform}</p>
-              </div>
-              <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                <Input label="Service Fee" value={fee.FeePercent} type="number" suffix="%" onChange={v => updateFeeRow(idx, 'FeePercent', v)} />
-                <Input label="Comm." value={fee.Commission} type="number" suffix="%" onChange={v => updateFeeRow(idx, 'Commission', v)} />
-                <Input label="VAT" value={fee.VAT} type="number" suffix="%" onChange={v => updateFeeRow(idx, 'VAT', v)} />
-                <Input label="Fixed Fee" value={fee.FixedFee} type="number" suffix="฿" onChange={v => updateFeeRow(idx, 'FixedFee', v)} />
-                <Input label="Campaign" value={fee.CampaignFee} type="number" suffix="%" onChange={v => updateFeeRow(idx, 'CampaignFee', v)} />
-              </div>
             </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
+        </div>
+    </main>
+
+    <script>
+        let platforms = {
+            "Shopee": {
+                fees: [
+                    { key: 'payment', label: 'Payment Transaction Fee (%)', val: 3.21, type: 'percent' },
+                    { key: 'sale', label: 'Sale Transaction FeePlatform (%)', val: 10.7, type: 'percent' },
+                    { key: 'service', label: 'PRIME Seller fee (%)', val: 8.56, type: 'percent' },
+                    { key: 'infrastructure', label: 'Infrastructure Fee (Fixed)', val: 1.07, type: 'fixed' }
+                ]
+            },
+            "TikTok Shop": {
+                fees: [
+                    { key: 'payment', label: 'Payment Transaction Fee (%)', val: 3.21, type: 'percent' },
+                    { key: 'sale', label: 'Sale Transaction FeePlatform (%)', val: 7.49, type: 'percent' },
+                    { key: 'promo', label: 'ส่งเสริมการขาย (%)', val: 6.96, type: 'percent' },
+                    { key: 'infrastructure', label: 'Infrastructure Fee (Fixed)', val: 1.07, type: 'fixed' },
+                    { key: 'live', label: 'ค่าธรรมเนียม Live Spacial (%)', val: 3.21, type: 'percent', toggle: true, enabled: false },
+                    { key: 'brand', label: 'ค่าธรรมเนียม Brand Crazy Deal (%)', val: 3.21, type: 'percent', toggle: true, enabled: false }
+                ]
+            },
+            "Lazada": {
+                fees: [
+                    { key: 'payment', label: 'Payment Transaction Fee (%)', val: 3.21, type: 'percent' },
+                    { key: 'sale', label: 'Sale Transaction FeePlatform (%)', val: 10.0, type: 'percent' },
+                    { key: 'service', label: 'Premium Package fee (%)', val: 4.0, type: 'percent' }
+                ]
+            },
+            "Custom": {
+                fees: [
+                    { key: 'f1', label: 'ค่าธรรมเนียม 1 (%)', val: 0, type: 'percent' },
+                    { key: 'f2', label: 'ค่าธรรมเนียม 2 (%)', val: 0, type: 'percent' }
+                ]
+            }
+        };
+
+        let items = [{ id: Date.now(), cost: 0, price: 0 }];
+        const MAX_ITEMS = 5;
+
+        function init() {
+            const saved = localStorage.getItem('ploypaw_calc_v8');
+            if (saved) platforms = JSON.parse(saved);
+            loadPlatformSettings();
+            renderItems();
+        }
+
+        function loadPlatformSettings() {
+            const p = document.getElementById('platformSelect').value;
+            const config = platforms[p];
+            let html = '';
+            config.fees.forEach((f, idx) => {
+                if (f.toggle) {
+                    html += `
+                        <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                            <span class="text-[11px] font-bold text-gray-500 uppercase">${f.label}</span>
+                            <label class="switch">
+                                <input type="checkbox" ${f.enabled ? 'checked' : ''} onchange="updateToggleValue('${p}', ${idx}, this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div>
+                            <label class="input-label">${f.label}</label>
+                            <input type="number" step="0.01" value="${f.val}" oninput="updateFeeValue('${p}', ${idx}, this.value)">
+                        </div>
+                    `;
+                }
+            });
+            document.getElementById('feeSettings').innerHTML = html;
+            calculateAll();
+        }
+
+        function updateFeeValue(p, idx, val) {
+            platforms[p].fees[idx].val = parseFloat(val) || 0;
+            calculateAll();
+        }
+
+        function updateToggleValue(p, idx, checked) {
+            platforms[p].fees[idx].enabled = checked;
+            calculateAll();
+        }
+
+        function saveSettings() {
+            localStorage.setItem('ploypaw_calc_v8', JSON.stringify(platforms));
+            showToast('บันทึกค่าธรรมเนียมแล้ว ✨');
+        }
+
+        function renderItems() {
+            const container = document.getElementById('itemsContainer');
+            container.innerHTML = '';
+            
+            items.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'border border-gray-100 rounded-[2rem] p-6 md:p-8 bg-white shadow-sm';
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center space-x-3">
+                            <span class="bg-[#f96096] text-white w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold">${index + 1}</span>
+                            <h3 class="font-bold text-gray-800">สินค้าชิ้นที่ ${index + 1}</h3>
+                        </div>
+                        ${items.length > 1 ? `
+                            <button onclick="removeItem(${index})" class="text-gray-300 hover:text-red-500 p-2">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        ` : ''}
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="input-label">ต้นทุนสินค้า</label>
+                                    <input type="number" value="${item.cost || ''}" oninput="updateItemData(${index}, 'cost', this.value)" placeholder="0.00">
+                                </div>
+                                <div>
+                                    <label class="input-label">ราคาที่ตั้งขาย</label>
+                                    <input type="number" value="${item.price || ''}" oninput="updateItemData(${index}, 'price', this.value)" placeholder="0.00" class="border-[#f96096]/30 bg-pink-50/20">
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 rounded-2xl p-4">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-widest">รายการหัก</p>
+                                <div id="breakdown-${index}" class="space-y-1"></div>
+                            </div>
+                        </div>
+
+                        <!-- Result Card - Dark Text Theme -->
+                        <div class="result-card">
+                            <div class="text-center mb-6">
+                                <p class="text-gray-400 text-[10px] uppercase font-semibold tracking-widest mb-1">กำไรหลังหักค่าธรรมเนียม</p>
+                                <div id="profit-${index}" class="text-4xl md:text-5xl font-bold tracking-tight text-gray-800">฿0.00</div>
+                            </div>
+                            <div class="space-y-3 pt-6 border-t border-gray-200">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-500 font-medium">ยอดรับสุทธิ:</span>
+                                    <span id="payout-${index}" class="text-gray-800 font-bold">฿0.00</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-500 text-xs font-medium">Margin:</span>
+                                    <span id="margin-${index}" class="px-4 py-1.5 rounded-full text-xs font-black bg-gray-200 text-gray-700">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            document.getElementById('itemCounter').innerText = `รายการ ${items.length} / ${MAX_ITEMS}`;
+            calculateAll();
+        }
+
+        function updateItemData(idx, key, val) {
+            items[idx][key] = parseFloat(val) || 0;
+            calculateAll();
+        }
+
+        function calculateAll() {
+            const p = document.getElementById('platformSelect').value;
+            const config = platforms[p];
+
+            items.forEach((item, index) => {
+                let totalFee = 0;
+                let breakdownHtml = '';
+                if (item.price > 0) {
+                    config.fees.forEach(f => {
+                        if (f.toggle && !f.enabled) return;
+
+                        let amount = 0;
+                        if (f.type === 'percent') {
+                            amount = (item.price * f.val) / 100;
+                        } else {
+                            amount = f.val;
+                        }
+                        
+                        totalFee += amount;
+                        breakdownHtml += `<div class="fee-row"><span>${f.label}</span><span class="font-bold text-gray-700">฿${amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>`;
+                    });
+                } else {
+                    breakdownHtml = '<div class="text-center text-gray-300 py-2 text-xs italic">รอระบุราคาขาย...</div>';
+                }
+
+                const payout = Math.max(0, item.price - totalFee);
+                const profit = payout - item.cost;
+                const margin = item.price > 0 ? (profit / item.price) * 100 : 0;
+
+                const profitEl = document.getElementById(`profit-${index}`);
+                if (profitEl) {
+                    profitEl.innerText = `฿${profit.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                    
+                    if (profit < 0) {
+                        profitEl.style.color = '#ef4444'; // Red for loss
+                    } else {
+                        profitEl.style.color = '#1f2937'; // Dark gray/black for profit
+                    }
+
+                    document.getElementById(`payout-${index}`).innerText = `฿${payout.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                    const mEl = document.getElementById(`margin-${index}`);
+                    mEl.innerText = `${margin.toFixed(2)}%`;
+                    
+                    if (margin < 0) {
+                        mEl.style.color = '#ef4444';
+                        mEl.style.backgroundColor = '#fee2e2';
+                    } else {
+                        mEl.style.color = '#059669'; // Green for positive margin
+                        mEl.style.backgroundColor = '#d1fae5';
+                    }
+                    
+                    document.getElementById(`breakdown-${index}`).innerHTML = breakdownHtml;
+                }
+            });
+        }
+
+        function addItem() {
+            if (items.length < MAX_ITEMS) {
+                items.push({ id: Date.now(), cost: 0, price: 0 });
+                renderItems();
+            }
+        }
+
+        function removeItem(idx) {
+            items.splice(idx, 1);
+            renderItems();
+        }
+
+        function showToast(msg) {
+            const t = document.createElement('div');
+            t.className = 'fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-4 rounded-full shadow-2xl z-50 font-medium text-sm transition-all duration-300 transform translate-y-2 opacity-0';
+            t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; }, 50);
+            setTimeout(() => { 
+                t.style.opacity = '0'; 
+                t.style.transform = 'translateX(-50%) translateY(10px)';
+                setTimeout(() => t.remove(), 300);
+            }, 3000);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
